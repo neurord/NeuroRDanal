@@ -1,0 +1,44 @@
+===========
+NeuroRDanal
+===========
+
+**1. nrdh5_anal.py**
+---------------------
+
+Processes h5 output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. To process multiple files, the first part of file name must be the same for all files, and parameter variations are specified as -par1-par2.
+Graphs are generated for either a set of specified molecules, or all molecules if none are specified.  Basal value, peak and minimum are also printed, where basal value is calculeted between two specified timepoints.
+
+To run the program from within python, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,basalstart basalsend" then execfile('nrdh5_anal.py')
+from outside python, type python neurordh5_analysis "subdir/fileroot [par1 par2] [mol1 mol2] [basalstart basalsend]"
+DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS
+mol1 mol2, etc are the names of molecles to process
+par1 and optionally par2 are used to construct filenames as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
+DO NOT use hyphens in filenames except for preceding parameter name
+if no parameters specified, then fileroot needs to be full filename (excluding the .h5 extension)
+If only a single file is specified, will plot multiple trials; if multiple files, plots the mean over trials for each file
+
+Other parameters to adjust in program
+1. outputavg - set to 1 to create region average output files to read into your favorite graphin software
+2. showplot - set to 2 to plot the spine head concentration
+3. stimspine - this should be the name of the spine head you want to plot with showplot=2
+4. spinehead - this should be the name of your spinehead region
+
+**2. sig.py**
+---------------------
+Calculate LTP/LTD signature from two sets of molecules, separately for spines and dendrites, by adding together the specified molecules, and then calculating area under the curve (and above the specified thresholds)
+
+To run the program from within python, type ARGS="subdir/fileroot,par1 par2,LTPmol1 LTPmol2,LTDmol1 LTdmol2,basal_start basal_end, T_LTPd T_LTPsp T_LTDd T_LTDsp", then execfile('sig.py')
+from outside python, type python sig.py "subdir/fileroot [par1 par2] [LTPmol1 LTPmol2] [LTDmol1 LTdmol2] [basalstart basalsend] [T_LTPd T_LTPsp T_LTDd T_LTDsp]"
+LTPmol1 LTPmol2, etc are the names of molecles which produce LTP is sufficiently high (and hinder LTD)
+LTDmol1 LTDmol2, etc are the names of molecles which produce LTD is sufficiently high (and hinder LTP)
+T_LTPd T_LTPsp T_LTDd T_LTDsp are thresholds - defining "sufficiently high"
+
+**3. plot_h5.py**
+---------------------
+
+Utilities used by nrdh5_anal.py and sig.py for creating graphs
+
+**4. h5utils.py**
+---------------------
+
+Utilities used by nrdh5_anal.py and sig.py for creating region averages
