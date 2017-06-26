@@ -25,11 +25,10 @@ from __future__ import division
 import os
 import numpy as np
 from matplotlib import pyplot
-from string import *
 import sys  
 import glob
-import h5utils
-import plot_h5 as pu5
+from NeuroRDanal import h5utils
+from NeuroRDanal import plot_h5 as pu5
 import h5py as h5
 
 #######################################################
@@ -40,16 +39,17 @@ dend="dend"
 spinehead="head"
 window_size=1  #number of seconds on either side of peak value to average for maximum
 #Spatial average (=1 to process) only includes the structure dend, and subdivides into bins:
-spatialaverage=0
-bins=10
+spatialaverage=1
+bins=6
 #how much info to print
 showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=0
-showplot=1    #2 indicates plot the head conc, 0 means no plots
-stimspine='sa1[0]' #"name" of (stimulated) spine
+outputavg=2
+sum_name='Dp34'
+showplot=2    #2 indicates plot the head conc, 0 means no plots
+stimspine='sa1[0] sa1[1] sa1[6]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=110 #time to stop calculating AUC
 textsize=10 #for plots.  Make bigger for presentations
@@ -88,6 +88,7 @@ except Exception:
 parval=[]
 numfiles=len(ftuples)
 whole_plot_array=[]
+whole_space_array=[]
 whole_time_array=[]
 for fnum,ftuple in enumerate(ftuples):
     data,maxvols,TotVol,trials,seeds,arraysize,p=h5utils.initialize(ftuple,numfiles,parval)
@@ -95,6 +96,7 @@ for fnum,ftuple in enumerate(ftuples):
         params=p[0]
         parval=p[1]
         parlist=p[2]
+    space_array=[]
     plot_array=[]
     time_array=[]
     #
@@ -123,7 +125,12 @@ for fnum,ftuple in enumerate(ftuples):
             dsm_vox=list(region_struct_dict.keys()).index(dsm_name)
         except ValueError:
             dsm_vox=-1
-    #
+        if spatialaverage:
+            spatial_dict=h5utils.spatial_average(bins,dend,data['model']['grid'])
+            vox=[x['vox'] for x in spatial_dict.values()]
+            if any(v==0 for v in vox):
+                print ("**********Too many bins for spatial average****************")
+#
     ##### Initialization done only for first file in the list
     #
     if fnum==0:
@@ -135,6 +142,7 @@ for fnum,ftuple in enumerate(ftuples):
         num_mols=len(plot_molecules)
         if numfiles>1:
             whole_plot_array=[[] for mol in plot_molecules]
+            whole_space_array=[[] for mol in plot_molecules]
             whole_time_array=[[] for mol in plot_molecules]
         #
         ss_tot=np.zeros((arraysize,len(tot_species)))
@@ -170,7 +178,9 @@ for fnum,ftuple in enumerate(ftuples):
                 spineheader,spinemeans,spineMeanStd=h5utils.region_means_dict(molecule_pop,spinevox,time,molecule,trials)
             else:
                 spineheader=''
-            #calculate overall mean
+            if spatialaverage:
+                spacehead,spaceMeans,spaceMeanStd=h5utils.region_means_dict(molecule_pop,spatial_dict,time,molecule,trials)
+                #calculate overall mean
             OverallMean=np.zeros((len(trials),np.shape(molecule_pop)[1]))
             OverallMean[:,:]=np.sum(molecule_pop[:,:,:],axis=2)/(TotVol*mol_per_nM_u3)
             header='#time ' +headstruct+headreg+molecule+'AvgTot\n'
@@ -192,55 +202,52 @@ for fnum,ftuple in enumerate(ftuples):
             else:
                 if numfiles>1:
                     plot_array.append(np.mean(OverallMean,axis=0))
-                    #plot_array dimensions=number of molecules x sample times
+                     #plot_array dimensions=number of molecules x sample times
                 else:
                     #dimensions of plot_array=num molecules x num trials x sample times
                     plot_array.append(OverallMean)
+            if spatialaverage:
+                if numfiles>1:
+                        space_array.append(np.mean(spaceMeans,axis=0))
+                else:
+                        space_array.append(spaceMeans)
             if imol==0:
                 print("samples", len(time), "maxtime", time[-1], "conc", np.shape(molecule_pop), np.shape(plot_array), 'time',np.shape(time_array))
+                if outputavg>1:
+                    num_regions=np.shape(spinemeans)[-1]
+                    mol_sum=np.zeros((len(trials),len(time),num_regions))
             #
             ############# write averages to separate files #######################3
             if outputavg:
-                 if molecule in plot_molecules:
-                    outfname=fname[0:-3]+'_'+molecule+'_avg.txt'
-                    if len(params)==1:
-                        param_name=params[0]+parval[fnum]
-                    if len(params)==2:
-                        param_name=params[0]+parval[fnum][0]+params[1]+parval[fnum][1]
-                    print('output file:', outfname,  ' param_name:', param_name)
-                    newheader=''
+                outfname=ftuple[0][0:-3]+'_'+molecule+'_avg.txt'
+                if len(params)==1:
+                    param_name=params[0]+parval[fnum]
+                if len(params)==2:
+                    param_name=params[0]+parval[fnum][0]+params[1]+parval[fnum][1]
+                print('output file:', outfname,  ' param_name:', param_name)
+                newheader, newheaderstd=h5utils.new_head(header,param_name)
+                if len(trials)>1:
+                    nonspine_out=np.column_stack((RegMeanStd['mean'],RegStructMeanStd['mean'],np.mean(OverallMean,axis=0),RegMeanStd['std'],RegStructMeanStd['std'],np.std(OverallMean,axis=0)))
+                else:
                     newheaderstd=''
-                    for item in header.split():
-                        if item.startswith('#'):
-                            newheader=newheader+item+' '
-                        else:
-                            newheader=newheader+param_name+'_'+item+' '
-                        if not item.startswith('#'):
-                            newheaderstd=newheaderstd+param_name+'_'+item+'std '
+                    nonspine_out=np.column_stack((RegionMeans[0,:,:],RegionStructMeans[0,:,:],OverallMean[0,:]))
+                if len(spinelist)>1:
+                    newspinehead, newspineheadstd=h5utils.new_head(spineheader,param_name)
                     if len(trials)>1:
-                        nonspine_out=np.column_stack((RegMeanStd['mean'],RegStructMeanStd['mean'],np.mean(OverallMean,axis=0),RegMeanStd['std'],RegStructMeanStd['std'],np.std(OverallMean,axis=0)))
+                        wholeheader=newheader+newheaderstd+newspinehead+newspineheadstd+'\n'
+                        outdata=np.column_stack((time,nonspine_out,spineMeanStd['mean'],spineMeanStd['std']))
                     else:
-                        newheaderstd=''
-                        nonspine_out=np.column_stack((RegionMeans[0,:,:],RegionStructMeans[0,:,:],OverallMean[0,:]))
-                    if len(spinelist)>1:
-                        newspinehead=''
-                        newspineheadstd=''
-                        for item in spineheader.split():
-                            newspinehead=newspinehead+param_name+'_'+item+' '
-                            newspineheadstd=newspineheadstd+param_name+'_'+item+'std '
-                        if len(trials)>1:
-                            wholeheader=newheader+newheaderstd+newspinehead+newspineheadstd+'\n'
-                            outdata=np.column_stack((time,nonspine_out,spineMeanStd['mean'],spineMeanStd['std']))
-                        else:
-                            wholeheader=newheader+newspinehead+'\n'
-                            outdata=np.column_stack((time,nonspine_out,spinemeans[0,:,:]))
-                    else:
-                        wholeheader=newheader+newheaderstd+'\n'
-                        outdata=nonspine_out
-                    f=open(outfname, 'w')
-                    f.write(wholeheader)
-                    np.savetxt(f, outdata, fmt='%.4f', delimiter=' ')
-                    f.close()
+                        wholeheader=newheader+newspinehead+'\n'
+                        outdata=np.column_stack((time,nonspine_out,spinemeans[0,:,:]))
+                else:
+                    wholeheader=newheader+newheaderstd+'\n'
+                    outdata=nonspine_out
+                f=open(outfname, 'w')
+                f.write(wholeheader)
+                np.savetxt(f, outdata, fmt='%.4f', delimiter=' ')
+                f.close()
+                if outputavg>1:
+                    mol_sum=mol_sum+spinemeans
             if print_head_stats:
                 print(molecule.rjust(14), end=' ')
                 if head_index>-1:
@@ -264,6 +271,30 @@ for fnum,ftuple in enumerate(ftuples):
               time_array.append(time)
               plot_array.append(np.zeros(len(time)))
               #
+        if outputavg>1:
+            outfname=ftuple[0][0:-3]+sum_name+'.txt'
+            sum_header='time  '
+            for item in spineheader.split():
+                newitem=[item.split('_')[-1]+sum_name+'_t'+str(t)+' ' for t in range(len(trials))]
+                sum_header=sum_header+''.join(newitem)
+            mean_head=[item.split('_')[-1]+sum_name+'mean ' for item in spineheader.split()]
+            stdev_head=[item.split('_')[-1]+sum_name+'stdev ' for item in spineheader.split()]
+            sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
+            f=open(outfname, 'w')
+            f.write(sum_header+'\n')
+            num_trials=np.shape(mol_sum)[0]
+            cols=num_trials*num_regions
+            rows=np.shape(mol_sum)[1]
+            outdata=np.zeros((rows,cols))
+            outmean=np.zeros((rows,num_regions))
+            outstd=np.zeros((rows,num_regions))
+            for p in range(num_regions):
+                outdata[:,p*num_trials:(p+1)*num_trials]=mol_sum[:,:,p].T
+                outmean[:,p]=np.mean(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+                outstd[:,p]=np.std(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+            outputdata=np.column_stack((time,outdata,outmean,outstd))
+            np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
+            f.close()
     else:
         ######################################
         #minimal processing needed if only a single voxel.
@@ -301,9 +332,11 @@ for fnum,ftuple in enumerate(ftuples):
         for mol in range(num_mols):
             whole_plot_array[mol].append(plot_array[mol])
             whole_time_array[mol].append(time_array[mol])
+            whole_space_array[mol].append(space_array[mol])
     else:
         #dimensions of plot_array=num molecules x num trials x sample times
         whole_plot_array=plot_array
+        whole_space_array=space_array
         whole_time_array=[[time_array[imol] for trial in trials] for imol in range(len(plot_molecules))]
     if 'event_statistics' in data['trial0']['output'].keys() and show_inject:
         print ("seeds", seeds," injection stats:")
@@ -398,6 +431,8 @@ if showplot:
     fig.canvas.set_window_title(figtitle)
     pu5.plottrace(plot_molecules,whole_time_array,whole_plot_array,parval,fig,col_inc,scale,parlist,textsize)
     #
+if spatialaverage:
+    pu5.space_avg(plot_molecules,whole_space_array,whole_time_array,parval,spatial_dict)
 #
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
 #it will work with other parameters, as long as there are two of them. Just change the auc_mol
