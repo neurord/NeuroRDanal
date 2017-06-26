@@ -18,11 +18,10 @@ from __future__ import division
 import os
 import numpy as np
 from matplotlib import pyplot
-from string import *
 import sys  
 import glob
-import h5utils
-import plot_h5 as pu5
+from NeuroRDanal import h5utils
+from NeuroRDanal import plot_h5 as pu5
 import h5py as h5
 
 #######################################################
@@ -185,21 +184,26 @@ sig_ltd=np.zeros((len(parval),np.max(lengths),num_regions))
 #############################
 #customize this part.  E.g.
 #add values of LTP molecules, subtract LTD molecules; or accumulate each signature separately
-def sig_subtract(sig_array,strt,send,num_regions,ltp_samples):
-    basal=np.mean(sig_array[strt:send],axis=0)
+def sig_subtract(sig_array,strt,send,num_regions,ltp_samples,normYN):
+    if normYN:
+        basal=np.mean(sig_array[strt:send],axis=0)
+    else:
+        basal=0
     sig_subtracted=sig_array-basal
     extra=ltp_samples-np.shape(sig_subtracted)[0]
     if extra:
         extra_zeros=np.zeros((extra,num_regions))
         sig_subtracted=np.vstack((sig_subtracted,extra_zeros))
     return sig_subtracted
+
+norm=0
 for f in range(len(parval)):
     for each_mol in ltp_molecules:
         col=all_molecules.index(each_mol)
-        sig_ltp[f]=sig_ltp[f]+sig_subtract(signature_array[col][f],sstart[col],ssend[col],num_regions,np.shape(sig_ltp[f])[0])
+        sig_ltp[f]=sig_ltp[f]+sig_subtract(signature_array[col][f],sstart[col],ssend[col],num_regions,np.shape(sig_ltp[f])[0],norm)
     for each_mol in ltd_molecules:
         col=all_molecules.index(each_mol)
-        sig_ltd[f]=sig_ltd[f]+sig_subtract(signature_array[col][f],sstart[col],ssend[col],num_regions,np.shape(sig_ltd[f])[0])
+        sig_ltd[f]=sig_ltd[f]+sig_subtract(signature_array[col][f],sstart[col],ssend[col],num_regions,np.shape(sig_ltd[f])[0],norm)
 #signature dimensions=num files/trials x sample times x (1+numspines)
 #End customization
 #############################
