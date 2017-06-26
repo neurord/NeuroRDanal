@@ -23,6 +23,18 @@ def decode(table):
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
 
+def new_head(header,param_name):
+    newheader=''
+    newheaderstd=''
+    for item in header.split():
+        if item.startswith('#'):
+            newheader=newheader+item+' '
+        else:
+            newheader=newheader+param_name+'_'+item+' '
+        if not item.startswith('#'):
+            newheaderstd=newheaderstd+param_name+'_'+item+'std '
+    return newheader,newheaderstd
+
 def join_params(parval,params):
     if len(params)>1:
         label=join(parval)
@@ -238,5 +250,33 @@ def region_means_dict(data,regionDict,time,molecule,trials):
         RegionMeanStd['mean']=np.mean(RegionMeans,axis=0)
         RegionMeanStd['std']=np.std(RegionMeans,axis=0)
     return header,RegionMeans,RegionMeanStd
-    
- 
+
+def spatial_average(bins,region,grid):
+    #may want to modify this to use of group instead of region_name
+    xloc=[row[0] for row in grid if row['region_name'] == region]
+    xdim=np.max(xloc)-np.min(xloc)
+    yloc=[row[1] for row in grid if row['region_name'] == region]
+    ydim=np.max(yloc)-np.min(yloc)
+    if (xdim >= ydim):    #xdim is larger
+        loc=xloc
+        coord='x0'
+        spaceheader='#time, x='
+        extraloc=[row[3] for row in grid if row['region_name'] == region]
+    else:                #ydim is larger
+        loc=yloc
+        coord='y0'
+        spaceheader='#time, y='
+        extraloc=[row[7] for row in grid if row['region_name'] == region]
+    minloc=min(np.min(loc),np.min(extraloc))
+    maxloc=max(np.max(loc),np.max(extraloc))
+    bininc=(maxloc-minloc)/bins
+    binmin=[minloc+j*bininc for j in range(bins)]
+    binmin.append(maxloc)
+    binvoxels=[[] for j in range(bins)]
+    binvolumes=[[] for j in range(bins)]
+    spatial_dict=OrderedDict()
+    for j in range(bins):
+        binvoxels[j]=[i for i,row in enumerate(grid) if (row[coord]>=binmin[j] and row[coord]< binmin[j+1]) and row['region_name'] == region]
+        binvolumes[j]=[row['volume'] for row in grid if (row[coord]>=binmin[j] and row[coord]< binmin[j+1]) and row['region_name'] == region]
+        spatial_dict[str(np.round(binmin[j],3))]={'vox': binvoxels[j], 'vol': sum(binvolumes[j])}
+    return spatial_dict
