@@ -11,6 +11,17 @@ colors2D=[pyplot.get_cmap('gist_heat'),pyplot.get_cmap('Blues'),pyplot.get_cmap(
 offset=[0,0,63]  #avoid the light colors in low indices for the 'Blues' map
 partial_scale=0.75 #avoid the very light colors.  Note that non-zero offset must be <= (1-partial_scale)*255
 
+def space_avg(plot_molecules,whole_space_array,whole_time_array,trials,spatial_dict):
+     for imol in range(len(plot_molecules)):
+          fig,axes=pyplot.subplots(np.shape(whole_space_array[imol])[0], 1,sharex=True)
+          fig.suptitle(plot_molecules[imol])
+          for trial,tname in enumerate(trials):
+               pyplot.subplot(np.shape(whole_space_array[imol])[0],1,trial+1)
+               pyplot.imshow(whole_space_array[imol][trial].T,extent=[0, np.max(whole_time_array[imol][trial]), float(spatial_dict.keys()[0]), float(spatial_dict.keys()[-1])],aspect='auto',origin='lower')
+               pyplot.colorbar()
+               pyplot.ylabel (str(tname)+' (um)')
+          pyplot.xlabel('time (ms)')
+             
 def plot_setup(plot_molecules,param_list,param_name):
      pyplot.ion()
      if len(plot_molecules)>8:
