@@ -39,16 +39,15 @@ dend="dend"
 spinehead="head"
 window_size=1  #number of seconds on either side of peak value to average for maximum
 #Spatial average (=1 to process) only includes the structure dend, and subdivides into bins:
-spatialaverage=1
+spatialaverage=0
 bins=6
 #how much info to print
 showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=2
-sum_name='Dp34'
-showplot=2    #2 indicates plot the head conc, 0 means no plots
+outputavg=1
+showplot=0    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0] sa1[1] sa1[6]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=110 #time to stop calculating AUC
@@ -213,12 +212,9 @@ for fnum,ftuple in enumerate(ftuples):
                         space_array.append(spaceMeans)
             if imol==0:
                 print("samples", len(time), "maxtime", time[-1], "conc", np.shape(molecule_pop), np.shape(plot_array), 'time',np.shape(time_array))
-                if outputavg>1:
-                    num_regions=np.shape(spinemeans)[-1]
-                    mol_sum=np.zeros((len(trials),len(time),num_regions))
             #
             ############# write averages to separate files #######################3
-            if outputavg:
+            if outputavg==1:
                 outfname=ftuple[0][0:-3]+'_'+molecule+'_avg.txt'
                 if len(params)==1:
                     param_name=params[0]+parval[fnum]
@@ -246,8 +242,6 @@ for fnum,ftuple in enumerate(ftuples):
                 f.write(wholeheader)
                 np.savetxt(f, outdata, fmt='%.4f', delimiter=' ')
                 f.close()
-                if outputavg>1:
-                    mol_sum=mol_sum+spinemeans
             if print_head_stats:
                 print(molecule.rjust(14), end=' ')
                 if head_index>-1:
@@ -271,30 +265,6 @@ for fnum,ftuple in enumerate(ftuples):
               time_array.append(time)
               plot_array.append(np.zeros(len(time)))
               #
-        if outputavg>1:
-            outfname=ftuple[0][0:-3]+sum_name+'.txt'
-            sum_header='time  '
-            for item in spineheader.split():
-                newitem=[item.split('_')[-1]+sum_name+'_t'+str(t)+' ' for t in range(len(trials))]
-                sum_header=sum_header+''.join(newitem)
-            mean_head=[item.split('_')[-1]+sum_name+'mean ' for item in spineheader.split()]
-            stdev_head=[item.split('_')[-1]+sum_name+'stdev ' for item in spineheader.split()]
-            sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
-            f=open(outfname, 'w')
-            f.write(sum_header+'\n')
-            num_trials=np.shape(mol_sum)[0]
-            cols=num_trials*num_regions
-            rows=np.shape(mol_sum)[1]
-            outdata=np.zeros((rows,cols))
-            outmean=np.zeros((rows,num_regions))
-            outstd=np.zeros((rows,num_regions))
-            for p in range(num_regions):
-                outdata[:,p*num_trials:(p+1)*num_trials]=mol_sum[:,:,p].T
-                outmean[:,p]=np.mean(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
-                outstd[:,p]=np.std(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
-            outputdata=np.column_stack((time,outdata,outmean,outstd))
-            np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
-            f.close()
     else:
         ######################################
         #minimal processing needed if only a single voxel.
@@ -332,7 +302,8 @@ for fnum,ftuple in enumerate(ftuples):
         for mol in range(num_mols):
             whole_plot_array[mol].append(plot_array[mol])
             whole_time_array[mol].append(time_array[mol])
-            whole_space_array[mol].append(space_array[mol])
+            if spatialaverage:
+                whole_space_array[mol].append(space_array[mol])
     else:
         #dimensions of plot_array=num molecules x num trials x sample times
         whole_plot_array=plot_array

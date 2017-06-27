@@ -26,11 +26,14 @@ import h5py as h5
 
 #######################################################
 spinehead="head"
-msec_per_sec=1000
 textsize=14 #make bigger for presentations
-
+outputavg=1
+sum_name=['Dp34all','Dp75all']
+window_size=1  #number of seconds on either side of peak value to average for maximum
+#######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
+msec_per_sec=1000
 
 try:
     args = ARGS.split(",")
@@ -108,11 +111,25 @@ for fnum,ftuple in enumerate(ftuples):
     sstart,ssend=h5utils.sstart_end(all_molecules, args, 4, out_location,dt,rows)
     molecule_name_issue=0
     if maxvols>1:
+        if outputavg:
+            num_regions=len(spinelist)
+            LTP_sum=np.zeros((len(trials),np.max(rows),num_regions))
+            LTP_sumTot=np.zeros((len(trials),np.max(rows)))
+            LTD_sum=np.zeros((len(trials),np.max(rows),num_regions))
+            LTD_sumTot=np.zeros((len(trials),np.max(rows)))
         for imol,molecule in enumerate(all_molecules):
           if out_location[molecule]!=-1:
             molecule_pop,time=h5utils.get_mol_pop(data,out_location[molecule],maxvols,trials)
+            OverallMean=np.sum(molecule_pop[:,:,:],axis=2)/(TotVol*mol_per_nM_u3)
             #calculate non-spine mean and individual spine means
             spineheader,spinemeans,spineMeanStd=h5utils.region_means_dict(molecule_pop,spinevox,time,molecule,trials)
+            if outputavg:
+                if molecule in ltp_molecules:
+                    LTP_sum=LTP_sum+spinemeans
+                    LTP_sumTot=LTP_sumTot+OverallMean
+                if molecule in ltd_molecules:
+                    LTD_sum=LTD_sum+spinemeans
+                    LTD_sumTot=LTD_sumTot+OverallMean
             if numfiles>1:
                 #dimensions will be number of molecules x sample times x (1+ num spines)
                 sig_data.append(np.mean(spinemeans,axis=0))
@@ -129,6 +146,10 @@ for fnum,ftuple in enumerate(ftuples):
     ######################################
     else:
         voxel=0
+        if outputavg:
+            LTP_sum=np.zeros((len(trials),np.max(rows)))
+            LTD_sum=np.zeros((len(trials),np.max(rows)))
+            spineheader="all"
         for mol in all_molecules:
           if out_location[mol]!=-1:
             outset = out_location[mol]['location'].keys()[0]
@@ -138,6 +159,11 @@ for fnum,ftuple in enumerate(ftuples):
             #generate output files for these cases
             for trialnum,trial in enumerate(trials):
                 tempConc[trialnum]=data[trial]['output'][outset]['population'][:,voxel,imol]/TotVol/mol_per_nM_u3
+            if outputavg:
+                if molecule in ltp_molecules:
+                    LTP_sum=LTP_sum+tempConc
+                if molecule in ltd_molecules:
+                    LTD_sum=LTD_sum+tempConc
             if numfiles>1:
                  sig_data.append(np.mean(tempConc,axis=0))
                  #sig_data dimensions=number of molecules x sample times
@@ -158,6 +184,58 @@ for fnum,ftuple in enumerate(ftuples):
             signature_array[mol].append(sig_data[mol])
     else:
         signature_array=sig_data
+    #############################################
+    # output of sum of molecules - useful for showing signature
+    #############################################################
+    if outputavg:
+        sum_array=[LTP_sum,LTD_sum]
+        Tot_array=[LTP_sumTot,LTD_sumTot]
+        for num,nm in enumerate(sum_name):
+            sum_header='time  '
+            for item in spineheader.split():
+                newitem=[item.split('_')[-1]+nm+'_t'+str(t)+' ' for t in range(len(trials))]
+                sum_header=sum_header+''.join(newitem)
+            mean_head=[item.split('_')[-1]+nm+'mean ' for item in spineheader.split()]
+            stdev_head=[item.split('_')[-1]+nm+'stdev ' for item in spineheader.split()]
+            sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
+            Overall_header=[nm+'_t'+str(t)+' ' for t in range(len(trials))]+[nm+"mean ",nm+"stdev"]
+            sum_header=sum_header+"".join(Overall_header)
+            outfname=ftuple[0][0:-3]+'_'+nm+'plas'+'.txt'
+            f=open(outfname, 'w')
+            f.write(sum_header+'\n')
+            num_trials=len(trials)
+            cols=num_trials*num_regions
+            sum_rows=np.shape(LTP_sum)[1]
+            outdata=np.zeros((sum_rows,cols))
+            outmean=np.zeros((sum_rows,num_regions))
+            outstd=np.zeros((sum_rows,num_regions))
+            outOverall=np.zeros((sum_rows,num_trials+2))
+            for p in range(num_regions):
+                outdata[:,p*num_trials:(p+1)*num_trials]=sum_array[num][:,:,p].T
+                #outdata[:,p*num_trials:(p+1)*num_trials]=LTD_sum[:,:,p].T
+                outmean[:,p]=np.mean(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+                outstd[:,p]=np.std(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+            outOverall[:,range(num_trials)]=Tot_array[num].T
+            outOverall[:,num_trials]=np.mean(outOverall[:,range(num_trials)],axis=1)
+            outOverall[:,num_trials+1]=np.std(outOverall[:,range(num_trials)],axis=1)
+            outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
+            np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
+            f.close()
+            ########### Put this into separate function
+            ### read in all text files of certain pattern, e.g. *Dp34.txt
+            ### calculate base, peak, ratio, print 1 line per file
+            ### header: base sp, base dend, peak sp, peak dend, ratio sp, ratio dend
+            ### 1st column: file=fname.split(pattern)[0], col=file.split(-)[1](+file.split(-)[2])
+            window=int(window_size/dt[0])
+            base_sum=outOverall[sstart[0]:ssend[0],num_trials].mean()
+            peakpt_sum=outOverall[ssend[0]:,num_trials].argmax()+ssend[0]
+            #peaktime[pnum,imol]=peakpt*dt[imol]
+            peak_sum=outOverall[peakpt_sum-window:peakpt_sum+window,num_trials].mean()
+            minpt_sum=outOverall[ssend[0]:,num_trials].argmin()+ssend[0]
+            min_sum=outOverall[minpt_sum-window:minpt_sum+window,num_trials].mean()
+            if fnum==0 and num==0:
+                print ('fname            base   peak   inc    min    dec')
+            print (outfname.split('-')[-1].split('.')[0],np.round(base_sum,2),np.round(peak_sum,2),np.round(peak_sum/base_sum,4),np.round(min_sum,2),np.round(min_sum/base_sum,4))
 #####################################################################
 #Calculate signature
 #####################################################################
@@ -238,3 +316,5 @@ else:
 print("area above threshold for LTP and LTD using", thresh)
 for par in range(len(parval)):
     print(parval[par], np.round(ltp_above_thresh[par],3), np.round(ltd_above_thresh[par],3))
+
+    
