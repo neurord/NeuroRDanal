@@ -1,10 +1,11 @@
 #sig.py
 #calculate LTP/LTD signature from two sets of molecules, separately for spines and dendrites
-#USAGE: in python, type ARGS="subdir/fileroot,par1 par2,LTPmol1 LTPmol2,LTDmol1 LTdmol2,basal_start basal_end, T_LTPd T_LTPsp T_LTDd T_LTDsp"
+#USAGE: in python, type ARGS="subdir/fileroot,par1 par2,LTPmol1 LTPmol2,LTDmol1 LTdmol2,basal_start basal_end, T_LTPd T_LTPsp T_LTDd T_LTDsp,sum_name1 sumname2"
 #then execfile('sig.py')
 #DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS, rows is optional
 #LTPmol1 LTPmol2, etc are the names of molecles which produce LTP is sufficiently high (and hinder LTD)
 #LTDmol1 LTDmol2, etc are the names of molecles which produce LTD is sufficiently high (and hinder LTP)
+#sum_name1 and sum_name2 are prefixes for filenames with output molecule sum traces
 #par1 and optionally par2 are specifications of parameter variations, as follows:
 #The filenames to read in are constructed as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
 #DO NOT use hyphens in filenames except for preceding parameter name
@@ -28,7 +29,6 @@ import h5py as h5
 spinehead="head"
 textsize=14 #make bigger for presentations
 outputavg=1
-sum_name=['Dp34all','Dp75all']
 window_size=1  #number of seconds on either side of peak value to average for maximum
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -90,7 +90,7 @@ for fnum,ftuple in enumerate(ftuples):
         #Get list of molecules for LTP and list for LTD.  identify which output sets and voxels they are in
         ltp_molecules=args[2].split()
         ltd_molecules=args[3].split()
-        if len(args)>5:
+        if len(args[5]):
             thresh=args[5].split()
         else:
             thresh=['0', '0', '0', '0']
@@ -190,6 +190,7 @@ for fnum,ftuple in enumerate(ftuples):
     if outputavg:
         sum_array=[LTP_sum,LTD_sum]
         Tot_array=[LTP_sumTot,LTD_sumTot]
+        sum_name=args[6].split()
         for num,nm in enumerate(sum_name):
             sum_header='time  '
             for item in spineheader.split():
@@ -221,11 +222,7 @@ for fnum,ftuple in enumerate(ftuples):
             outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
             np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
             f.close()
-            ########### Put this into separate function
-            ### read in all text files of certain pattern, e.g. *Dp34.txt
-            ### calculate base, peak, ratio, print 1 line per file
-            ### header: base sp, base dend, peak sp, peak dend, ratio sp, ratio dend
-            ### 1st column: file=fname.split(pattern)[0], col=file.split(-)[1](+file.split(-)[2])
+            ########### Calculate baseline, peak, min and ratios
             window=int(window_size/dt[0])
             base_sum=outOverall[sstart[0]:ssend[0],num_trials].mean()
             peakpt_sum=outOverall[ssend[0]:,num_trials].argmax()+ssend[0]
@@ -234,8 +231,8 @@ for fnum,ftuple in enumerate(ftuples):
             minpt_sum=outOverall[ssend[0]:,num_trials].argmin()+ssend[0]
             min_sum=outOverall[minpt_sum-window:minpt_sum+window,num_trials].mean()
             if fnum==0 and num==0:
-                print ('fname            base   peak   inc    min    dec')
-            print (outfname.split('-')[-1].split('.')[0],np.round(base_sum,2),np.round(peak_sum,2),np.round(peak_sum/base_sum,4),np.round(min_sum,2),np.round(min_sum/base_sum,4))
+                print ('fname                     base   peak    inc     min     dec')
+            print ('{0:25}  {1:.1f}  {2:.1f}  {3:.3f}  {4:.1f}  {5:.3f}'.format(''.join(parval[fnum])+nm,base_sum,peak_sum,peak_sum/base_sum,min_sum,min_sum/base_sum))
 #####################################################################
 #Calculate signature
 #####################################################################
@@ -315,6 +312,6 @@ else:
     pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
 print("area above threshold for LTP and LTD using", thresh)
 for par in range(len(parval)):
-    print(parval[par], np.round(ltp_above_thresh[par],3), np.round(ltd_above_thresh[par],3))
+    print('{0:20} {1:8} {2:8}'.format(''.join(parval[par]), np.round(ltp_above_thresh[par],3), np.round(ltd_above_thresh[par],3)))
 
     

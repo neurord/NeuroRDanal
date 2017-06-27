@@ -7,7 +7,7 @@ legtextsize=8
      
 colors=pyplot.get_cmap('viridis')
 #colors=pyplot.get_cmap('plasma')
-colors2D=[pyplot.get_cmap('gist_heat'),pyplot.get_cmap('Blues'),pyplot.get_cmap('summer')]
+colors2D=[pyplot.get_cmap('gist_heat'),pyplot.get_cmap('summer'),pyplot.get_cmap('Blues')]
 offset=[0,0,63]  #avoid the light colors in low indices for the 'Blues' map
 partial_scale=0.75 #avoid the very light colors.  Note that non-zero offset must be <= (1-partial_scale)*255
 
@@ -165,7 +165,11 @@ def file_tuple(fnames,params):
      print('pu: ',params, fnames)
      for fname in fnames:
           dotloc=fname.rfind('.')
-          part_fname=fname[0:dotloc].split('-'+params[0])[-1] 
+          if params[0]=='*':
+               split_text='-'
+          else:
+               split_text='-'+params[0]
+          part_fname=fname[0:dotloc].split(split_text)[-1] 
           hyphen=part_fname.find('-')
           if hyphen>-1:
                parval0=part_fname[0:hyphen]
