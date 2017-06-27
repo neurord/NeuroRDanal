@@ -46,8 +46,8 @@ showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=1
-showplot=0    #2 indicates plot the head conc, 0 means no plots
+outputavg=0
+showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0] sa1[1] sa1[6]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=110 #time to stop calculating AUC
@@ -163,7 +163,6 @@ for fnum,ftuple in enumerate(ftuples):
     sstart,ssend=h5utils.sstart_end(plot_molecules,args,3,out_location,dt,rows)
     molecule_name_issue=0
     if maxvols>1:
-        print(params, "=",parval[fnum], "voxels=",maxvols)
         for imol,molecule in enumerate(plot_molecules):
           if out_location[molecule]!=-1:
             molecule_pop,time=h5utils.get_mol_pop(data,out_location[molecule],maxvols,trials)
@@ -211,7 +210,7 @@ for fnum,ftuple in enumerate(ftuples):
                 else:
                         space_array.append(spaceMeans)
             if imol==0:
-                print("samples", len(time), "maxtime", time[-1], "conc", np.shape(molecule_pop), np.shape(plot_array), 'time',np.shape(time_array))
+                print(parval[fnum], "voxels",maxvols, "samples", len(time), "maxtime", time[-1], "conc", np.shape(molecule_pop), np.shape(plot_array), 'time',np.shape(time_array))
             #
             ############# write averages to separate files #######################3
             if outputavg==1:
@@ -421,7 +420,9 @@ if auc_mol and auc_mol in plot_molecules and 'dhpg' in params:
             pnum=parval.index((dur,dhpg))
             if i==0:
                 dhpg0index[j]=pnum
-            print('dur=', dur, 'dhpg=', dhpg, 'auc',np.round(auc[pnum][molnum],2), 'ratio', np.round(auc[pnum][molnum]/auc[dhpg0index[j]][molnum]), 'new auc',np.round(newauc[pnum][molnum]), 'ratio', np.round(newauc[pnum][molnum]/newauc[dhpg0index[j]][molnum],2))
+            if i==0 and j==0:
+                print ('{} dur dhpg auc   ratio  new_auc ratio'.format(args[3]))
+            print('{0:8} {1:4} {2:.2f} {3:.3f} {4:.2f} {5:.3f}'.format(dur, dhpg, auc[pnum][molnum], auc[pnum][molnum]/auc[int(dhpg0index[j])][molnum], newauc[pnum][molnum], newauc[pnum][molnum]/newauc[int(dhpg0index[j])][molnum]))
 
 #then plot the steady state versus parameter value for each molecule
 #Needs to be fixed so that it works with non numeric parameter values
