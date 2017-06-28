@@ -40,15 +40,15 @@ spinehead="head"
 window_size=1  #number of seconds on either side of peak value to average for maximum
 #Spatial average (=1 to process) only includes the structure dend, and subdivides into bins:
 spatialaverage=0
-bins=6
+bins=10
 #how much info to print
 showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-showplot=1    #2 indicates plot the head conc, 0 means no plots
-stimspine='sa1[0] sa1[1] sa1[6]' #"name" of (stimulated) spine
+showplot=2    #2 indicates plot the head conc, 0 means no plots
+stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=110 #time to stop calculating AUC
 textsize=10 #for plots.  Make bigger for presentations
@@ -184,15 +184,14 @@ for fnum,ftuple in enumerate(ftuples):
             header='#time ' +headstruct+headreg+molecule+'AvgTot\n'
             #
             if showplot==2:
-                if stimspine in spinelist:
-                    spine_index=spinelist.index(stimspine)
+                spine_index=[spinelist.index(stimsp) for stimsp in stimspine.split()]
+                if len(spine_index):
                     if fnum==0 and imol==0:
                         figtitle=figtitle+' '+stimspine
                 else:
                     spine_index=0
                     if fnum==0 and imol==0:
                         figtitle=figtitle+' '+'nonspine'
-                #TEST THIS PART FOR MULTIPLE SPINES/TRIALS
                 if numfiles>1:
                     plot_array.append(np.mean(spinemeans,axis=0)[:,spine_index])
                 else:
@@ -396,10 +395,10 @@ for pnum in range(arraysize):
 #####################################################################
 #
 if showplot:
-    fig,col_inc,scale=pu5.plot_setup(plot_molecules,parlist,params)
+    fig,col_inc,scale=pu5.plot_setup(plot_molecules,parlist,params,len(stimspine.split()),showplot)
     #need fnames
     fig.canvas.set_window_title(figtitle)
-    pu5.plottrace(plot_molecules,whole_time_array,whole_plot_array,parval,fig,col_inc,scale,parlist,textsize)
+    pu5.plottrace(plot_molecules,whole_time_array,whole_plot_array,parval,fig,col_inc,scale,parlist,textsize,stimspine.split(),showplot)
     #
 if spatialaverage:
     pu5.space_avg(plot_molecules,whole_space_array,whole_time_array,parval,spatial_dict)

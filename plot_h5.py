@@ -22,7 +22,7 @@ def space_avg(plot_molecules,whole_space_array,whole_time_array,trials,spatial_d
                pyplot.ylabel (str(tname)+' (um)')
           pyplot.xlabel('time (ms)')
              
-def plot_setup(plot_molecules,param_list,param_name):
+def plot_setup(plot_molecules,param_list,param_name,num_spines,plottype):
      pyplot.ion()
      if len(plot_molecules)>8:
           rows=int(np.round(np.sqrt(len(plot_molecules))))
@@ -36,11 +36,14 @@ def plot_setup(plot_molecules,param_list,param_name):
      for i,paramset in enumerate(param_list):
           if len(paramset)>1:
                col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
+               if plottype==2 and num_spines>1:
+                    col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines-1)
           else:
                col_inc[i]=0.0
      return fig,col_inc,scale
 
-def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsize):
+def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsize,stimspines,plottype):
+     num_spines=len(stimspines)
      print("plottrace: plotmol,parval,parlist:", plotmol,parval, parlist)
      axis=fig.axes  #increments col index 1st
      for pnum in range(len(parval)):
@@ -58,19 +61,28 @@ def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsi
                     mycolor=colors.colors[color_index]
                     plotlabel=parval[pnum]
                else:
-                    plotlabel=parval[pnum][0]+'-'+parval[pnum][1]
                     if len(parlist[1])<len(parlist[0]):
+                         par_index=0
                          map_index=parlist[1].index(parval[pnum][1])
-                         color_index=int(parlist[0].index(parval[pnum][0])*colinc[0]*partial_scale)
                     else:
+                         par_index=1
                          map_index=parlist[0].index(parval[pnum][0])
-                         color_index=int(parlist[1].index(parval[pnum][1])*colinc[1]*partial_scale)
+                    color_index=int(parlist[par_index].index(parval[pnum][par_index])*colinc[par_index]*partial_scale)
                     mycolor=colors2D[map_index].__call__(color_index+offset[map_index])
+                    plotlabel=parval[pnum][0]+'-'+parval[pnum][1]
           #Second, plot each molecule
           for imol in range(len(plotmol)):
                #axis[imol].autoscale(enable=True,tight=False)
                #change label back to parval[pnum] after figures created
-               axis[imol].plot(timearray[imol][pnum][:],plotarray[imol][pnum][:],label=plotlabel,color=mycolor)
+               if num_spines>1 and plottype==2:
+                    for spnum,sp in enumerate(stimspines):
+                         new_index=int((parlist[par_index].index(parval[pnum])*num_spines+spnum)*colinc[par_index]*partial_scale)
+                         #Note: this will not give expected color if 2 dimensions of parameters
+                         new_col=colors.colors[new_index]
+                         axis[imol].plot(timearray[imol][pnum][:],plotarray[imol][pnum][:].T[spnum],
+                                         label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
+               else:
+                    axis[imol].plot(timearray[imol][pnum][:],plotarray[imol][pnum][:],label=plotlabel,color=mycolor)
                axis[imol].set_ylabel(plotmol[imol]+' (nM)',fontsize=textsize)
                axis[imol].tick_params(labelsize=textsize)
           axis[imol].set_xlabel('Time (sec)',fontsize=textsize)
