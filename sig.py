@@ -26,10 +26,11 @@ from NeuroRDanal import plot_h5 as pu5
 import h5py as h5
 
 #######################################################
-spinehead="head"
+spinehead="head" #name of spine head from morphology file
 textsize=14 #make bigger for presentations
-outputavg=1
+outputavg=1  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
 window_size=1  #number of seconds on either side of peak value to average for maximum
+norm=1 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
@@ -201,9 +202,6 @@ for fnum,ftuple in enumerate(ftuples):
             sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
             Overall_header=[nm+'_t'+str(t)+' ' for t in range(len(trials))]+[nm+"mean ",nm+"stdev"]
             sum_header=sum_header+"".join(Overall_header)
-            outfname=ftuple[0][0:-3]+'_'+nm+'plas'+'.txt'
-            f=open(outfname, 'w')
-            f.write(sum_header+'\n')
             num_trials=len(trials)
             cols=num_trials*num_regions
             sum_rows=np.shape(LTP_sum)[1]
@@ -220,8 +218,12 @@ for fnum,ftuple in enumerate(ftuples):
             outOverall[:,num_trials]=np.mean(outOverall[:,range(num_trials)],axis=1)
             outOverall[:,num_trials+1]=np.std(outOverall[:,range(num_trials)],axis=1)
             outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
-            np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
-            f.close()
+            if outputavg>1:
+                outfname=ftuple[0][0:-3]+'_'+nm+'plas'+'.txt'
+                f=open(outfname, 'w')
+                f.write(sum_header+'\n')
+                np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
+                f.close()
             ########### Calculate baseline, peak, min and ratios
             window=int(window_size/dt[0])
             base_sum=outOverall[sstart[0]:ssend[0],num_trials].mean()
@@ -271,7 +273,6 @@ def sig_subtract(sig_array,strt,send,num_regions,ltp_samples,normYN):
         sig_subtracted=np.vstack((sig_subtracted,extra_zeros))
     return sig_subtracted
 
-norm=0
 for f in range(len(parval)):
     for each_mol in ltp_molecules:
         col=all_molecules.index(each_mol)
