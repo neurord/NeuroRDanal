@@ -13,10 +13,12 @@ import glob
 from NeuroRDanal import h5utils
 from NeuroRDanal import plot_h5 as pu5
 from collections import OrderedDict
+import pandas as pd
 
 coltype='mean'
 normYN=0
 textsize=8
+time_thresh=10 #units are sec.  Make this parameter later
 
 try:
     args = ARGS.split(",")
@@ -86,13 +88,11 @@ for molnum,mol in enumerate(all_molecules):
 sig_ltp=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
 sig_ltd=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
 auc=OrderedDict()
-#Other possible signature values
-#1. time above threshold = number of points in above_thresh array
-#2. contiguous time above threshold - how to calculcate this?  A. low pass filter values, B. low pass filter the above thresh array
-#3. auc of contiguous time above threshold = np.sum(sig[points extraced in item 2])
-#4. 4 time samples of LTP molecules, e.g. 10 s mean (100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
-#    This would be done prior to peak normalization and summing
+auc_contig=OrderedDict()
 time_above=OrderedDict()
+contig_time_above=OrderedDict()
+# 4 time samples of LTP molecules, e.g. 10 s mean (100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
+#    This would be done prior to peak normalization and summing
 
 #This variant sums molecules after normalizing to peak across paradigms 
 for molnum,mol in enumerate(all_molecules):
@@ -102,21 +102,36 @@ for molnum,mol in enumerate(all_molecules):
             sig_ltp[fnum]=sig_ltp[fnum]+all_sig_array[mol][fnum]/peak_norm
         else:
             sig_ltd[fnum]=sig_ltd[fnum]+all_sig_array[mol][fnum]/peak_norm
-#AUC
+#various measures
 for fnum,fname in enumerate(fname_roots):
     auc_set=np.zeros((2,2))
-    for region in range(len(col_num[0:-1])):
-        T_LTP=(float(thresh[1]),float(thresh[0]))[region==0]
-        T_LTD=(float(thresh[3]),float(thresh[2]))[region==0]
-        above_thresh=[x for x in range(len(sig_ltp[fnum,:,region])) if sig_ltp[fnum,x,region]>T_LTP and x>pend]
-        auc_set[0][region]=np.sum(sig_ltp[fnum,above_thresh,region])*time[1]
-        above_thresh=[x for x in range(len(sig_ltd[fnum,:,region])) if sig_ltd[fnum,x,region]>T_LTD and x>pend]
-        auc_set[1][region]=np.sum(sig_ltp[fnum,above_thresh,region])*time[1]
+    auc_contig_set=np.zeros((2,2))
+    time_above_set=np.zeros((2,2))
+    contig_time_above_set=np.zeros((2,2))
+    for tnum,sig in enumerate([sig_ltp,sig_ltd]):
+      for region in range(len(col_num[0:-1])):
+        reg_thresh=(float(thresh[2*tnum+1]),float(thresh[2*tnum]))[region==0]
+        dur_thresh=int(time_thresh/dt[0])
+        #1. auc above threshold, #2. time above threshold
+        above_thresh=[x for x in range(len(sig[fnum,:,region])) if sig[fnum,x,region]>reg_thresh and x>pend]
+        time_above_set[tnum][region]=len(above_thresh)
+        auc_set[tnum][region]=np.sum(sig_ltp[fnum,above_thresh,region])*time[1]
+        #3. contiguous time above threshold, #4, auc for contiguous time above threshold
+        df_sig = pd.DataFrame(sig[fnum, :, region])
+        above_thresh=(df_sig[pend:] > reg_thresh).rolling(dur_thresh).sum() >= dur_thresh
+        contig_time_above_set[tnum][region]=above_thresh.any()
+        above=[x+pend for x in above_thresh if x == True]
+        auc_contig_set[tnum][region]=sum(sig[fnum,above,region])
     auc[fname[fname.find('-'):]]=auc_set
+    time_above[fname[fname.find('-'):]]=time_above_set
+    contig_time_above[fname[fname.find('-'):]]=contig_time_above_set
+    auc_contig[fname[fname.find('-'):]]=auc_contig_set
 print('######### auc:')
-for key,value in auc.items():
-    #print('{0:30}  {1:.2f}  {2:.2f}  {3:.2f}  {4:.2f}'.format(key,value.flatten()[0],value.flatten()[1],value.flatten()[2], value.flatten()[3]))
-    print('{0:30}  {1:30}'.format(key,np.round(value.flatten(),2)))
+for measure,measure_name in zip([auc,time_above,contig_time_above,auc_contig],['auc','time_above','contig_time_above','auc_contig']):
+    print ("########## measure type", measure_name,"###############")
+    for key,value in measure.items():
+        #print('{0:30}  {1:.2f}  {2:.2f}  {3:.2f}  {4:.2f}'.format(key,value.flatten()[0],value.flatten()[1],value.flatten()[2], value.flatten()[3]))
+        print('{0:30}  {1:30}'.format(key,np.round(value.flatten(),2)))
 
 figtitle=fnm[0:fnm.find('-')]
 auc_label=[[] for p in parval]
