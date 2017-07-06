@@ -1,7 +1,7 @@
 #sig2.py
 #evaluate various features to use for signature
-#ARGS="subdir/fileroot,LTPmol,LTDmol,tstart tend"
-#ARGS="Model_SPNspineAChm4R_Gshydr5_GapD,Aphos CKpCam Epac1 Pkc,2ag,10 20"
+#ARGS="subdir/fileroot,LTPmol,LTDmol,tstart tend, t_ltp_dend t_ltp_sp t_ltd_dend t_ltd_sp time_thresh"
+#ARGS="Model_SPNspineAChm4R_Gshydr5_GapD,Aphos CKpCam Epac1 Pkc,2ag,10 20,1.8 1.5 0.4 0.2 11"
 from __future__ import print_function
 from __future__ import division
 
@@ -13,12 +13,10 @@ import glob
 from NeuroRDanal import h5utils
 from NeuroRDanal import plot_h5 as pu5
 from collections import OrderedDict
-import pandas as pd
 
 coltype='mean'
 normYN=0
 textsize=8
-time_thresh=10 #units are sec.  Make this parameter later
 
 try:
     args = ARGS.split(",")
@@ -46,8 +44,14 @@ tstart,tend=args[3].split()
 
 if len(args[4]):
     thresh=args[4].split()
+    if len(thresh)>4:
+        time_thresh=int(thresh[4])
+    else:
+        time_thresh=10 #units are sec.
 else:
     thresh=['0', '0', '0', '0']
+    time_thresh=10 #units are sec.
+
 
 all_peaks={}
 all_sig_array={}
@@ -102,7 +106,10 @@ for molnum,mol in enumerate(all_molecules):
             sig_ltp[fnum]=sig_ltp[fnum]+all_sig_array[mol][fnum]/peak_norm
         else:
             sig_ltd[fnum]=sig_ltd[fnum]+all_sig_array[mol][fnum]/peak_norm
+
+newsig=np.zeros((2,len(fname_roots),len(time),len(col_num[0:-1])))
 #various measures
+dur_thresh=int(time_thresh/dt[0])
 for fnum,fname in enumerate(fname_roots):
     auc_set=np.zeros((2,2))
     auc_contig_set=np.zeros((2,2))
@@ -111,28 +118,22 @@ for fnum,fname in enumerate(fname_roots):
     for tnum,sig in enumerate([sig_ltp,sig_ltd]):
       for region in range(len(col_num[0:-1])):
         reg_thresh=(float(thresh[2*tnum+1]),float(thresh[2*tnum]))[region==0]
-        dur_thresh=int(time_thresh/dt[0])
         #1. auc above threshold, #2. time above threshold
         above_thresh=[x for x in range(len(sig[fnum,:,region])) if sig[fnum,x,region]>reg_thresh and x>pend]
         time_above_set[tnum][region]=len(above_thresh)
-        auc_set[tnum][region]=np.sum(sig_ltp[fnum,above_thresh,region])*time[1]
+        auc_set[tnum][region]=np.sum(sig[fnum,above_thresh,region])*time[1]
         #3. contiguous time above threshold, #4, auc for contiguous time above threshold
-        df_sig = pd.DataFrame(sig[fnum, :, region])
-        above_thresh=(df_sig[pend:] > reg_thresh).rolling(dur_thresh).sum() >= dur_thresh
-        contig_time_above_set[tnum][region]=above_thresh.any()
-        above=[x+pend for x in above_thresh if x == True]
-        auc_contig_set[tnum][region]=sum(sig[fnum,above,region])
+        contig_above=h5utils.rolling(above_thresh,dur_thresh)
+        contig_time_above_set[tnum][region]=len(contig_above)
+        auc_contig_set[tnum][region]=np.sum(sig[fnum,contig_above,region])*time[1]
+        if len(contig_above):
+            newsig[tnum,fnum,contig_above,region]=sig[fnum,contig_above,region]
     auc[fname[fname.find('-'):]]=auc_set
     time_above[fname[fname.find('-'):]]=time_above_set
     contig_time_above[fname[fname.find('-'):]]=contig_time_above_set
     auc_contig[fname[fname.find('-'):]]=auc_contig_set
-print('######### auc:')
-for measure,measure_name in zip([auc,time_above,contig_time_above,auc_contig],['auc','time_above','contig_time_above','auc_contig']):
-    print ("########## measure type", measure_name,"###############")
-    for key,value in measure.items():
-        #print('{0:30}  {1:.2f}  {2:.2f}  {3:.2f}  {4:.2f}'.format(key,value.flatten()[0],value.flatten()[1],value.flatten()[2], value.flatten()[3]))
-        print('{0:30}  {1:30}'.format(key,np.round(value.flatten(),2)))
 
+#print and display measures
 figtitle=fnm[0:fnm.find('-')]
 auc_label=[[] for p in parval]
 domain=[head_names[x].split(coltype)[0] for x in col_num[0:-1]]
@@ -140,7 +141,19 @@ for par in range(len(parval)):
     auc_label[par]=[parval[par]+' '+dom[0:6] for dom in domain]
 sign_title=args[1]+' vs '+args[2]
 
-#if len(ltd_molecules):
-#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
-#else:
-#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+if len(ltd_molecules):
+    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
+    pu5.plot_signature(auc_label,newsig[0],time,figtitle,sign_title,textsize,thresh,newsig[1])
+else:
+    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+    pu5.plot_signature(auc_label,newsig[0],time,figtitle,sign_title,textsize,thresh)
+
+print('######### auc using :', thresh, "duration threshold", time_thresh)
+for measure,measure_name in zip([auc,time_above,contig_time_above,auc_contig],['auc','time_above','contig_time_above','auc_contig']):
+    print ("########## measure type", measure_name,"###############")
+    for key,value in measure.items():
+        #print('{0:30}  {1:.2f}  {2:.2f}  {3:.2f}  {4:.2f}'.format(key,value.flatten()[0],value.flatten()[1],value.flatten()[2], value.flatten()[3]))
+        print('{0:30}  {1:30} {2:.2f} {3:.2f}'.format(key,np.round(value.flatten(),2),value[0,0]-value[1,0], value[0,1]-value[1,1]))
+
+        
+    

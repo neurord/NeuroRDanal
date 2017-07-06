@@ -280,3 +280,12 @@ def spatial_average(bins,region,grid):
         binvolumes[j]=[row['volume'] for row in grid if (row[coord]>=binmin[j] and row[coord]< binmin[j+1]) and row['region_name'] == region]
         spatial_dict[str(np.round(binmin[j],3))]={'vox': binvoxels[j], 'vol': sum(binvolumes[j])}
     return spatial_dict
+
+def rolling(indices,dur):
+    adjacent=np.diff(indices)==1
+    contig_above=[]
+    for i,index in enumerate(indices[0:-dur]):
+        if adjacent[i:i+dur].all():
+            contig_above.append(index)
+    return contig_above
+
