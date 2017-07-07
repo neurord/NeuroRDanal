@@ -17,6 +17,8 @@ from collections import OrderedDict
 coltype='mean'
 normYN=0
 textsize=8
+plotYN=0
+print_measures=0
 
 try:
     args = ARGS.split(",")
@@ -51,7 +53,6 @@ if len(args[4]):
 else:
     thresh=['0', '0', '0', '0']
     time_thresh=10 #units are sec.
-
 
 all_peaks={}
 all_sig_array={}
@@ -89,15 +90,39 @@ for molnum,mol in enumerate(all_molecules):
     all_sig_array[mol]=sig_array
     all_peaks[mol]=peaks
 #
+# 4 time samples of LTP molecules: mean over a window (e.g. 10s or 100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
+# Include baseline to be able to use amount above or ratio above baseline
+win=int(time_thresh/dt[0]/2)
+t1=int(60/dt[0])+pstrt-win
+t2=int(90/dt[0])+pstrt-win
+t3=int(120/dt[0])+pstrt-win
+t4=int(150/dt[0])+pstrt-win
+sampletimes=[(pstrt,pend),(t1,t1+2*win), (t2,t2+2*win), (t3,t3+2*win), (t4,t4+2*win)]
+header='filename '
+for fnum,fname in enumerate(fname_roots):
+    samples=[]
+    for mol in all_sig_array.keys():
+        for t,timepoint in enumerate(sampletimes):
+            if fnum==0:
+                for col in range(len(col_num[0:-1])):
+                    header=header+str(mol)+'_'+str(int((timepoint[0]+win)*dt[0]))+'c'+str(col)+' '
+            samples.append(list(np.mean(all_sig_array[mol][fnum][timepoint[0]:timepoint[1]],axis=0)))
+    if fnum==0:
+        outfname=fname_roots[0].split('-')[0]+'time_samples.txt'
+        f=open(outfname, 'w')
+        f.write(header+'\n')
+    outputrow=[np.round(val,2) for sublist in samples for val in sublist]
+    out=" ".join(str(e) for e in outputrow)
+    f.write(fname+' '+out+'\n')
+    print(fname,out)
+f.close()
+
 sig_ltp=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
 sig_ltd=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
 auc=OrderedDict()
 auc_contig=OrderedDict()
 time_above=OrderedDict()
 contig_time_above=OrderedDict()
-# 4 time samples of LTP molecules, e.g. 10 s mean (100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
-#    This would be done prior to peak normalization and summing
-
 #This variant sums molecules after normalizing to peak across paradigms 
 for molnum,mol in enumerate(all_molecules):
     peak_norm=np.max(all_peaks[mol],axis=0)
@@ -141,15 +166,17 @@ for par in range(len(parval)):
     auc_label[par]=[parval[par]+' '+dom[0:6] for dom in domain]
 sign_title=args[1]+' vs '+args[2]
 
-if len(ltd_molecules):
+if plotYN:
+  if len(ltd_molecules):
     pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
     pu5.plot_signature(auc_label,newsig[0],time,figtitle,sign_title,textsize,thresh,newsig[1])
-else:
+  else:
     pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
     pu5.plot_signature(auc_label,newsig[0],time,figtitle,sign_title,textsize,thresh)
 
-print('######### auc using :', thresh, "duration threshold", time_thresh)
-for measure,measure_name in zip([auc,time_above,contig_time_above,auc_contig],['auc','time_above','contig_time_above','auc_contig']):
+if print_measures:
+  print('######### auc using :', thresh, "duration threshold", time_thresh)
+  for measure,measure_name in zip([auc,time_above,contig_time_above,auc_contig],['auc','time_above','contig_time_above','auc_contig']):
     print ("########## measure type", measure_name,"###############")
     for key,value in measure.items():
         #print('{0:30}  {1:.2f}  {2:.2f}  {3:.2f}  {4:.2f}'.format(key,value.flatten()[0],value.flatten()[1],value.flatten()[2], value.flatten()[3]))
