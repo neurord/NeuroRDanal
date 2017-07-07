@@ -14,7 +14,8 @@ from NeuroRDanal import h5utils
 from NeuroRDanal import plot_h5 as pu5
 from collections import OrderedDict
 
-coltype='mean'
+coltype=[1,2,3,4,5,6]#'mean'
+trials='3' #make trials=1 if coltype=='mean'
 normYN=0
 textsize=8
 plotYN=0
@@ -63,11 +64,13 @@ for molnum,mol in enumerate(all_molecules):
         header=f.readline()
         f.close()
         head_names=header.split()
-        col_num=[head_names.index(x) for x in head_names if coltype in x]
-        #print(fname.split('/')[-1],mol,[head_names[col] for col in col_num])
+        if type(coltype) is str:
+            col_num=[head_names.index(x) for x in head_names if coltype in x][0:-1]
+        else:
+            col_num=coltype
         alldata=np.loadtxt(fnm,skiprows=1)
         time=alldata[:,0]
-        data_cols=alldata[:,col_num[0:-1]]
+        data_cols=alldata[:,col_num]
         #very specific kluge because one of the files started much later. 
         if fname.split('-')[-1]=='blockPKA':
             extra=int(30/time[1])
@@ -76,22 +79,22 @@ for molnum,mol in enumerate(all_molecules):
         pstrt=int(int(tstart)/time[1])
         pend=int(int(tend)/time[1])
         if fnum==0:
-            sig_array=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
-            peaks=np.zeros((len(fname_roots),len(col_num[0:-1])))
+            sig_array=np.zeros((len(fname_roots),len(time),len(col_num)))
+            peaks=np.zeros((len(fname_roots),len(col_num)))
         #
         ########################### Signature part ##########################
         #
         if normYN:
             basal=np.mean(data_cols[pstrt+extra:pend+extra],axis=0)
         else:
-            basal=np.zeros(len(col_num[0:-1]))
+            basal=np.zeros(len(col_num))
         sig_array[fnum]=data_cols[extra:,:]-basal
         peaks[fnum]=np.max(sig_array[fnum],axis=0)
     all_sig_array[mol]=sig_array
     all_peaks[mol]=peaks
 #
 # 4 time samples of LTP molecules: mean over a window (e.g. 10s or 100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
-# Include baseline to be able to use amount above or ratio above baseline
+# Include baseline to be able to use amount above or ratio above baseline. 
 win=int(time_thresh/dt[0]/2)
 t1=int(60/dt[0])+pstrt-win
 t2=int(90/dt[0])+pstrt-win
@@ -100,11 +103,12 @@ t4=int(150/dt[0])+pstrt-win
 sampletimes=[(pstrt,pend),(t1,t1+2*win), (t2,t2+2*win), (t3,t3+2*win), (t4,t4+2*win)]
 header='filename '
 for fnum,fname in enumerate(fname_roots):
+    #loop over trials. create new output line for each trial.  figure out what columns to concatenate for header and to average over for time samples
     samples=[]
     for mol in all_sig_array.keys():
         for t,timepoint in enumerate(sampletimes):
             if fnum==0:
-                for col in range(len(col_num[0:-1])):
+                for col in range(len(col_num)):
                     header=header+str(mol)+'_'+str(int((timepoint[0]+win)*dt[0]))+'c'+str(col)+' '
             samples.append(list(np.mean(all_sig_array[mol][fnum][timepoint[0]:timepoint[1]],axis=0)))
     if fnum==0:
@@ -117,8 +121,8 @@ for fnum,fname in enumerate(fname_roots):
     print(fname,out)
 f.close()
 
-sig_ltp=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
-sig_ltd=np.zeros((len(fname_roots),len(time),len(col_num[0:-1])))
+sig_ltp=np.zeros((len(fname_roots),len(time),len(col_num)))
+sig_ltd=np.zeros((len(fname_roots),len(time),len(col_num)))
 auc=OrderedDict()
 auc_contig=OrderedDict()
 time_above=OrderedDict()
@@ -132,7 +136,7 @@ for molnum,mol in enumerate(all_molecules):
         else:
             sig_ltd[fnum]=sig_ltd[fnum]+all_sig_array[mol][fnum]/peak_norm
 
-newsig=np.zeros((2,len(fname_roots),len(time),len(col_num[0:-1])))
+newsig=np.zeros((2,len(fname_roots),len(time),len(col_num)))
 #various measures
 dur_thresh=int(time_thresh/dt[0])
 for fnum,fname in enumerate(fname_roots):
@@ -141,7 +145,7 @@ for fnum,fname in enumerate(fname_roots):
     time_above_set=np.zeros((2,2))
     contig_time_above_set=np.zeros((2,2))
     for tnum,sig in enumerate([sig_ltp,sig_ltd]):
-      for region in range(len(col_num[0:-1])):
+      for region in range(len(col_num)):
         reg_thresh=(float(thresh[2*tnum+1]),float(thresh[2*tnum]))[region==0]
         #1. auc above threshold, #2. time above threshold
         above_thresh=[x for x in range(len(sig[fnum,:,region])) if sig[fnum,x,region]>reg_thresh and x>pend]
@@ -161,7 +165,7 @@ for fnum,fname in enumerate(fname_roots):
 #print and display measures
 figtitle=fnm[0:fnm.find('-')]
 auc_label=[[] for p in parval]
-domain=[head_names[x].split(coltype)[0] for x in col_num[0:-1]]
+domain=[head_names[x].split(mol)[0] for x in col_num]
 for par in range(len(parval)):
     auc_label[par]=[parval[par]+' '+dom[0:6] for dom in domain]
 sign_title=args[1]+' vs '+args[2]
