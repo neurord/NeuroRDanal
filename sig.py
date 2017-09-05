@@ -31,6 +31,7 @@ textsize=14 #make bigger for presentations
 outputavg=1  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
 window_size=1  #number of seconds on either side of peak value to average for maximum
 norm=1 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
+trialstats=1
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
@@ -139,7 +140,7 @@ for fnum,ftuple in enumerate(ftuples):
                 sig_data.append(spinemeans)
           else:
               if fnum==0 and molecule_name_issue==0:
-                  print("Choose molecules from:", all_molecules)
+                  print("Choose molecules from:", data['model']['species'][:])
                   molecule_name_issue=1
               sig_data.append(np.zeros(len(time)))
     ######################################
@@ -192,6 +193,29 @@ for fnum,ftuple in enumerate(ftuples):
         sum_array=[LTP_sum,LTD_sum]
         Tot_array=[LTP_sumTot,LTD_sumTot]
         sum_name=args[6].split()
+        if trialstats:
+            endpt=1200 #to find proper peak with bathDaCa; make this another parameter
+            basalstrt=sstart[0]#1100  #make this sstart for all but 0dhpg; make this another parameter
+            basalend=ssend[0]#1500  #make this ssend for all but 0dhpg
+            if fnum==0:
+                print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
+            LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
+            LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
+            print('basal',np.round(LTP_basal,1), np.round(np.std(LTP_basal)/np.sqrt(len(trials)),1),
+                  np.round(LTD_basal,0), np.round(np.std(LTD_basal)/np.sqrt(len(trials)),1))
+            LTP_peak=[LTP_sumTot[i,ssend[0]:endpt].max() for i in range(len(trials))]
+            LTD_peak=[LTD_sumTot[i,ssend[0]:endpt].max() for i in range(len(trials))]
+            LTP_min=[LTP_sumTot[i,ssend[0]:endpt].min() for i in range(len(trials))]
+            LTD_min=[LTD_sumTot[i,ssend[0]:endpt].min() for i in range(len(trials))]
+            normD=np.zeros((len(trials),np.shape(LTD_sumTot)[1]))
+            normP=np.zeros((len(trials),np.shape(LTD_sumTot)[1]))
+            for i in range(len(trials)):
+                normD[i,ssend[0]:]=LTD_sumTot[i,ssend[0]:]-LTD_basal[i]
+                normP[i,ssend[0]:]=LTP_sumTot[i,ssend[0]:]-LTP_basal[i]
+            LTD_auc=[np.sum(normD[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
+            LTP_auc=[np.sum(normP[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
+            print('peak',np.round(LTP_peak,1), np.round(LTD_peak,1), 'min',np.round(LTP_min,1), np.round(LTD_min,1))
+            print('auc', np.round(LTP_auc,2),np.round(np.mean(LTP_auc),2),np.round(LTD_auc,2),np.round(np.mean(LTD_auc),2))
         for num,nm in enumerate(sum_name):
             sum_header='time  '
             for item in spineheader.split():
@@ -307,10 +331,10 @@ else:
             #auc_label[par].append(label+" auc="+str(np.round(auc[par,sp],1))+" "+spinelist[sp])
             auc_label[par].append(label+' '+str(np.round(auc[par,sp],1))+" "+spinelist[sp])
 pyplot.ion()
-if len(ltd_molecules):
-    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
-else:
-    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+#if len(ltd_molecules):
+#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
+#else:
+#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
 print("area above threshold for LTP and LTD using", thresh)
 for par in range(len(parval)):
     print('{0:20} {1:8} {2:8}'.format(''.join(parval[par]), np.round(ltp_above_thresh[par],3), np.round(ltd_above_thresh[par],3)))
