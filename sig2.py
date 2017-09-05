@@ -14,7 +14,7 @@ from NeuroRDanal import h5utils
 from NeuroRDanal import plot_h5 as pu5
 from collections import OrderedDict
 
-coltype=[1,2,3,4,5,6]#'mean'
+coltype='mean'
 trials='3' #make trials=1 if coltype=='mean'
 normYN=0
 textsize=8
@@ -44,7 +44,6 @@ all_molecules=ltp_molecules+ltd_molecules
 num_mols=len(all_molecules)
 
 tstart,tend=args[3].split()
-
 if len(args[4]):
     thresh=args[4].split()
     if len(thresh)>4:
@@ -52,8 +51,9 @@ if len(args[4]):
     else:
         time_thresh=10 #units are sec.
 else:
-    thresh=['0', '0', '0', '0']
-    time_thresh=10 #units are sec.
+	thresh=['0', '0', '0', '0']
+	time_thresh=[60,60,30,30,60,30] #units are sec.
+	samptimes=[60,90,60,90,120,120]
 
 all_peaks={}
 all_sig_array={}
@@ -95,31 +95,35 @@ for molnum,mol in enumerate(all_molecules):
 #
 # 4 time samples of LTP molecules: mean over a window (e.g. 10s or 100 points) surrounding 60, 90, 120, 150 s after stim - use in discriminant analysis
 # Include baseline to be able to use amount above or ratio above baseline. 
-win=int(time_thresh/dt[0]/2)
-t1=int(60/dt[0])+pstrt-win
-t2=int(90/dt[0])+pstrt-win
-t3=int(120/dt[0])+pstrt-win
-t4=int(150/dt[0])+pstrt-win
-sampletimes=[(pstrt,pend),(t1,t1+2*win), (t2,t2+2*win), (t3,t3+2*win), (t4,t4+2*win)]
-header='filename '
-for fnum,fname in enumerate(fname_roots):
-    #loop over trials. create new output line for each trial.  figure out what columns to concatenate for header and to average over for time samples
-    samples=[]
-    for mol in all_sig_array.keys():
-        for t,timepoint in enumerate(sampletimes):
-            if fnum==0:
-                for col in range(len(col_num)):
-                    header=header+str(mol)+'_'+str(int((timepoint[0]+win)*dt[0]))+'c'+str(col)+' '
-            samples.append(list(np.mean(all_sig_array[mol][fnum][timepoint[0]:timepoint[1]],axis=0)))
-    if fnum==0:
-        outfname=fname_roots[0].split('-')[0]+'time_samples.txt'
-        f=open(outfname, 'w')
-        f.write(header+'\n')
-    outputrow=[np.round(val,2) for sublist in samples for val in sublist]
-    out=" ".join(str(e) for e in outputrow)
-    f.write(fname+' '+out+'\n')
-    print(fname,out)
-f.close()
+for dur,st in zip(time_thresh,samptimes):
+	win=int(dur/time[1]/2)
+	t=int(st/time[1])+pstrt-win
+	samplepoints=[(pstrt,pend),(t,t+2*win)]
+	#
+	header='filename trial '
+	outfname=fname_roots[0].split('-')[0]+'_'+str(st)+'_'+str(dur)+'.txt'#'time_samples.txt'
+	f=open(outfname, 'w')
+	#This for tr in range(trials) and colset=[tr,tr+trials] is specific to sig.py output format
+	#would be better to determine trials versus regions from header or something
+	for fnum,fname in enumerate(fname_roots):
+		num_regions=int(len(col_num)/trials)
+		for tr in range(trials):
+			colset=[tr,tr+trials]
+			samples=[]
+			for mol in all_sig_array.keys():
+				for t,samp_point in enumerate(samplepoints):
+					if fnum==0 and tr==0:
+						for col in range(num_regions):
+							header=header+str(mol)+'_'+str(int((samp_point[0]+samp_point[1])*0.5*time[1]))+'c'+str(col)+' '
+					extracted_data=all_sig_array[mol][fnum][samp_point[0]:samp_point[1]].T
+					samples.append(list(np.mean(extracted_data[colset],axis=1)))
+			if fnum==0 and tr==0:
+				f.write(header+'\n')
+			outputrow=[ np.round(val,2) for sublist in samples for val in sublist]
+			out=str(tr)+' '+" ".join(str(e) for e in outputrow)
+			f.write(fname[fname.find('-'):]+' '+out+'\n')
+		#print(fname,out)
+	f.close()
 
 sig_ltp=np.zeros((len(fname_roots),len(time),len(col_num)))
 sig_ltd=np.zeros((len(fname_roots),len(time),len(col_num)))
