@@ -27,11 +27,14 @@ import h5py as h5
 
 #######################################################
 spinehead="head" #name of spine head from morphology file
+dend="dend"
 textsize=14 #make bigger for presentations
-outputavg=1  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
+outputavg=2  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
 window_size=1  #number of seconds on either side of peak value to average for maximum
-norm=1 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
+norm=0 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
 trialstats=1
+spatialaverage=1
+bins=10
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
@@ -58,7 +61,7 @@ except Exception:
 parval=[]
 numfiles=len(ftuples)
 signature_array=[]
-for fnum,ftuple in enumerate(ftuples):
+for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     data,maxvols,TotVol,trials,seeds,arraysize,p=h5utils.initialize(ftuple,numfiles,parval)
     if len(p):
         params=p[0]
@@ -83,6 +86,11 @@ for fnum,ftuple in enumerate(ftuples):
             spinelist,spinevox=h5utils.multi_spines(data['model'])
         else:
             spinelist=''
+        if spatialaverage:
+            spatial_dict=h5utils.spatial_average(bins,dend,data['model']['grid'])
+            vox=[x['vox'] for x in spatial_dict.values()]
+            if any(v==0 for v in vox):
+                print ("**********Too many bins for spatial average****************")
     #
     ##########################################################
     #   Initialize some arrays and get molecule-region output set information
@@ -113,8 +121,13 @@ for fnum,ftuple in enumerate(ftuples):
     sstart,ssend=h5utils.sstart_end(all_molecules, args, 4, out_location,dt,rows)
     molecule_name_issue=0
     if maxvols>1:
-        if outputavg:
+        if spatialaverage:
+            num_regions=len(spatial_dict.keys())
+        elif len(spinelist):
             num_regions=len(spinelist)
+        else:
+            num_regions=1
+        if outputavg:
             LTP_sum=np.zeros((len(trials),np.max(rows),num_regions))
             LTP_sumTot=np.zeros((len(trials),np.max(rows)))
             LTD_sum=np.zeros((len(trials),np.max(rows),num_regions))
@@ -125,19 +138,26 @@ for fnum,ftuple in enumerate(ftuples):
             OverallMean=np.sum(molecule_pop[:,:,:],axis=2)/(TotVol*mol_per_nM_u3)
             #calculate non-spine mean and individual spine means
             spineheader,spinemeans,spineMeanStd=h5utils.region_means_dict(molecule_pop,spinevox,time,molecule,trials)
+            if spatialaverage:
+                spacehead,spaceMeans,spaceMeanStd=h5utils.region_means_dict(molecule_pop,spatial_dict,time,molecule,trials)
+                summeans=spaceMeans
+                outheader=spacehead
+            else:
+                summeans=spinemeans
+                outheader=spineheader
             if outputavg:
                 if molecule in ltp_molecules:
-                    LTP_sum=LTP_sum+spinemeans
+                    LTP_sum=LTP_sum+summeans
                     LTP_sumTot=LTP_sumTot+OverallMean
                 if molecule in ltd_molecules:
-                    LTD_sum=LTD_sum+spinemeans
+                    LTD_sum=LTD_sum+summeans
                     LTD_sumTot=LTD_sumTot+OverallMean
             if numfiles>1:
                 #dimensions will be number of molecules x sample times x (1+ num spines)
-                sig_data.append(np.mean(spinemeans,axis=0))
+                sig_data.append(np.mean(summeans,axis=0))
             else:
                 #dimensions will be number of molecules x number of trials x sample times x 1+ num spines
-                sig_data.append(spinemeans)
+                sig_data.append(summeans)
           else:
               if fnum==0 and molecule_name_issue==0:
                   print("Choose molecules from:", data['model']['species'][:])
@@ -151,7 +171,7 @@ for fnum,ftuple in enumerate(ftuples):
         if outputavg:
             LTP_sum=np.zeros((len(trials),np.max(rows)))
             LTD_sum=np.zeros((len(trials),np.max(rows)))
-            spineheader="all"
+            outheader="all"
         for mol in all_molecules:
           if out_location[mol]!=-1:
             outset = out_location[mol]['location'].keys()[0]
@@ -190,15 +210,20 @@ for fnum,ftuple in enumerate(ftuples):
     # output of sum of molecules - useful for showing signature
     #############################################################
     if outputavg:
+        pu5.plot3D(LTP_sum,trials,ftuple[0][0:-3],ltp_molecules,spatial_dict.keys(),time)
+        pu5.plot3D(LTD_sum,trials,ftuple[0][0:-3],ltd_molecules,spatial_dict.keys(),time)
         sum_array=[LTP_sum,LTD_sum]
         Tot_array=[LTP_sumTot,LTD_sumTot]
         sum_name=args[6].split()
         if trialstats:
             endpt=1200 #to find proper peak with bathDaCa; make this another parameter
-            basalstrt=sstart[0]#1100  #make this sstart for all but 0dhpg; make this another parameter
-            basalend=ssend[0]#1500  #make this ssend for all but 0dhpg
+            basalstrt=sstart[0] #use 1300 for 0 dhpg and sstart for others ; make this another parameter
+            basalend=ssend[0] #use 1500 for 0 dhpg and ssend for others 
             if fnum==0:
-                print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
+                if args[6]:
+                    print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
+                else:
+                    print('STATISTICS', args[2],'trials, stderr  ',args[3],'trials, stderr')
             LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
             LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
             print('basal',np.round(LTP_basal,1), np.round(np.std(LTP_basal)/np.sqrt(len(trials)),1),
@@ -210,19 +235,19 @@ for fnum,ftuple in enumerate(ftuples):
             normD=np.zeros((len(trials),np.shape(LTD_sumTot)[1]))
             normP=np.zeros((len(trials),np.shape(LTD_sumTot)[1]))
             for i in range(len(trials)):
-                normD[i,ssend[0]:]=LTD_sumTot[i,ssend[0]:]-LTD_basal[i]
-                normP[i,ssend[0]:]=LTP_sumTot[i,ssend[0]:]-LTP_basal[i]
+                normD[i,:]=LTD_sumTot[i,:]-LTD_basal[i]
+                normP[i,:]=LTP_sumTot[i,:]-LTP_basal[i]
             LTD_auc=[np.sum(normD[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
             LTP_auc=[np.sum(normP[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
             print('peak',np.round(LTP_peak,1), np.round(LTD_peak,1), 'min',np.round(LTP_min,1), np.round(LTD_min,1))
             print('auc', np.round(LTP_auc,2),np.round(np.mean(LTP_auc),2),np.round(LTD_auc,2),np.round(np.mean(LTD_auc),2))
         for num,nm in enumerate(sum_name):
             sum_header='time  '
-            for item in spineheader.split():
+            for item in outheader.split():
                 newitem=[item.split('_')[-1]+nm+'_t'+str(t)+' ' for t in range(len(trials))]
                 sum_header=sum_header+''.join(newitem)
-            mean_head=[item.split('_')[-1]+nm+'mean ' for item in spineheader.split()]
-            stdev_head=[item.split('_')[-1]+nm+'stdev ' for item in spineheader.split()]
+            mean_head=[item.split('_')[-1]+nm+'mean ' for item in outheader.split()]
+            stdev_head=[item.split('_')[-1]+nm+'stdev ' for item in outheader.split()]
             sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
             Overall_header=[nm+'_t'+str(t)+' ' for t in range(len(trials))]+[nm+"mean ",nm+"stdev"]
             sum_header=sum_header+"".join(Overall_header)
@@ -243,7 +268,11 @@ for fnum,ftuple in enumerate(ftuples):
             outOverall[:,num_trials+1]=np.std(outOverall[:,range(num_trials)],axis=1)
             outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
             if outputavg>1:
-                outfname=ftuple[0][0:-3]+'_'+nm+'plas'+'.txt'
+                if spatialaverage:
+                    suffix='dend'
+                else:
+                    suffix='plas'
+                outfname=ftuple[0][0:-3]+'_'+nm+suffix+'.txt'
                 f=open(outfname, 'w')
                 f.write(sum_header+'\n')
                 np.savetxt(f, outputdata, fmt='%.4f', delimiter=' ')
@@ -272,10 +301,6 @@ if maxvols==1:
     auc=np.zeros(len(parval))
     num_regions=1
 else:
-    if len(spinelist):
-        num_regions=len(spinelist)
-    else:
-        num_regions=1
     auc=np.zeros((len(parval),num_regions))
 ltp_above_thresh=np.zeros((len(parval),num_regions))
 ltd_above_thresh=np.zeros((len(parval),num_regions))
@@ -317,6 +342,10 @@ if maxvols==1:
         auc_label.append(label+" auc="+str(np.round(auc[par],2)))
 else:
     auc_label=[[] for sp in range(len(parval))]
+    if spatialaverage:
+        regionnames=spatial_dict.keys()
+    else:
+        regionnames=spinelist
     for par in range(len(parval)):
         label=h5utils.join_params(parval[par],params)
         #label=parval[par][0]
@@ -329,12 +358,19 @@ else:
                 auc[par,sp]=auc[par,sp]-np.sum(sig_ltd[par,:,sp])*dt[0]/msec_per_sec
                 ltd_above_thresh[par,sp]=np.sum(sig_ltd[par,sig_ltd[par,:,sp]>T_LTD,sp]-T_LTD)*dt[0]/msec_per_sec
             #auc_label[par].append(label+" auc="+str(np.round(auc[par,sp],1))+" "+spinelist[sp])
-            auc_label[par].append(label+' '+str(np.round(auc[par,sp],1))+" "+spinelist[sp])
+            auc_label[par].append(label+' '+str(np.round(auc[par,sp],1))+" "+regionnames[sp])
 pyplot.ion()
-#if len(ltd_molecules):
-#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
-#else:
-#    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+if len(ltd_molecules):
+    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
+    numcol=2
+else:
+    numcol=1
+    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+if spatialaverage:
+    pu5.plot3D(sig_ltp,parval,figtitle,ltp_molecules,spatial_dict.keys(),time)
+    if len(ltd_molecules):
+        pu5.plot3D(sig_ltd,parval,figtitle,ltd_molecules,spatial_dict.keys(),time)
+        
 print("area above threshold for LTP and LTD using", thresh)
 for par in range(len(parval)):
     print('{0:20} {1:8} {2:8}'.format(''.join(parval[par]), np.round(ltp_above_thresh[par],3), np.round(ltd_above_thresh[par],3)))
