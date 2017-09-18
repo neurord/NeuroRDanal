@@ -218,6 +218,22 @@ def axlabel(ax, label):
     ax.text(-0.2, 1.05, label, transform=ax.transAxes,
             fontweight='bold', va='top', ha='right')   
 
+def plot3D(image,parval,figtitle,molecules,xvalues,time):
+     from matplotlib.ticker import MultipleLocator
+     minx=float(xvalues[0])
+     maxx=float(xvalues[-1])
+     fig,axes=pyplot.subplots(len(parval),1,sharex=True,sharey=True,figsize=(6,9))
+     fig.canvas.set_window_title(figtitle)
+     fig.suptitle('+'.join(molecules))
+     for par in range(len(parval)):
+          #for some reason, y axes are not correct without *10 in extent
+          correct=(maxx/len(parval))
+          cax=axes[par].imshow(image[par].T,extent=[0,time[-1],minx*correct,maxx*correct],vmin=0,vmax=np.max(image),origin='lower')
+          fig.colorbar(cax,ax=axes[par],ticks=MultipleLocator(round(np.max(image)/4)))
+          axes[par].set_ylabel(parval[par])
+          axes[par].set_xlabel('Time (sec)')
+
+    
 #from matplotlib.ticker import FuncFormatter
 #def other_stuff():
      #PercentFormatter = FuncFormatter(lambda x, pos: '{:.0%}'.format(x).replace('%', r'\%'))
