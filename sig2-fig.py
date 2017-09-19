@@ -23,9 +23,9 @@ from NeuroRDanal import plot_h5 as pu5
 #specify either 'mean' or column numbers, or region names - must match sig.py output
 #These should probably be additional parameters/arguments
 #coltype=[1,2,3,4,5,6]
-coltype=[str(x) for x in np.linspace(1.0,19.0,10)] #for spatial samples in long dendrite
-#coltype=['nonspine','sa1[0]','sa1[1]','sa1[6]']#'sa1[2]','sa1[3]','sa1[4]','sa1[5]','sa1[7]','sa1[8]','sa1[9]'
-suffix='dend'  #either dend to use spatial average files or plas to use spine outputs from sig.py  
+#coltype=[str(x) for x in np.linspace(1.0,19.0,10)] #for spatial samples in long dendrite
+coltype=['nonspine','sa1[0]','sa1[1]','sa1[2]','sa1[3]','sa1[4]','sa1[5]','sa1[6]','sa1[7]','sa1[8]','sa1[9]']
+suffix='plas'  #either dend to use spatial average files or plas to use spine outputs from sig.py  
 trials=3 #make trials=1 if coltype=='mean'
 normYN=1
 textsize=8
@@ -159,21 +159,60 @@ else:
     #h5utils.sig_outfile_single(time_thresh,time,samp_times,pstart,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array)
 
 #To write the signature file traces:
-if 'sa1[' in coltype:
+if any([col.startswith('sa1[') for col in coltype]):
     newdomain=[[dom[0].replace('sa1[','sp').replace(']',''),dom[1]] for dom in domain]
+    meanlabl=np.unique([dom[0] for dom in newdomain])
+    reg=[dom.split('sp')[1] for dom in meanlabl]
+    xvalues=sorted([float(x.replace('ine','-1')) for x in reg])
 else:
     newdomain=domain
+    meanlabl=np.unique([dom[0] for dom in domain])
+    xvalues=[float(dom) for dom in meanlabl]
+if np.min(xvalues)<0:
+    xvalues=[x-np.min(xvalues) for x in xvalues]
+
+#set up arrays for storing mean over trials
+num_regions=int(len(col_num)/trials)
+mean_sigs_ltp=np.zeros((len(fname_roots),len(time),num_regions))
+mean_sigs_ltd=np.zeros((len(fname_roots),len(time),num_regions))
+#abbreviated column labels
 newlabel=[''.join(newdomain[x]) for x in range(len(newdomain))]
 sig=sig_ltp-sig_ltd
 for ii,file_cond in enumerate(fname_roots):
     for array,plastype,molecules in zip([sig_ltp,sig_ltd,sig],['ltp','ltd','sig'],[ltp_molecules,ltd_molecules,ltp_molecules+ltd_molecules]):
+        #Automatic file naming and column headers, Write the file
         fname=file_cond+'_'+plastype+'.txt'
         param_name='_'.join(file_cond.split('-')[1:]).replace('stim','')
         header='time '+' '.join([plastype+'_'+param_name+labl for labl in newlabel])
         f=open(fname, 'w')
         f.write(' '.join(molecules)+'\n')
         f.write(header+'\n')
-        np.savetxt(f,array[ii], fmt='%.4f', delimiter=' ')
+        np.savetxt(f,np.column_stack((time,array[ii])), fmt='%.4f', delimiter=' ')
         f.close()
-        
+        #average over trials, write to file
+        mean_sig=np.zeros((len(time),num_regions))
+        for reg in range(num_regions):
+            colset=[tr+reg*trials for tr in range(trials)]
+            mean_sig[:,reg]=np.mean(array[ii,:,colset],axis=0)
+        if plastype=='ltp':
+            mean_sigs_ltp[ii,:,:]=mean_sig
+        elif plastype=='ltd':
+            mean_sigs_ltd[ii,:,:]=mean_sig
+        fname=file_cond+'_'+plastype+'avg.txt'
+        header='time '+' '.join([plastype+'_'+param_name+labl for labl in meanlabl])
+        f=open(fname, 'w')
+        f.write(' '.join(molecules)+'\n')
+        f.write(header+'\n')
+        np.savetxt(f,np.column_stack((time,mean_sig)), fmt='%.4f', delimiter=' ')
+        f.close()
 
+for array,mean_array,mols in zip([sig_ltp,sig_ltd],[mean_sigs_ltp,mean_sigs_ltd],[ltp_molecules,ltd_molecules]):
+    if np.min(mean_array)<0:
+        label=[[] for p in parval]
+        for par in range(len(parval)):
+            label[par]=[parval[par]+' '+ labl for labl in meanlabl]
+        pu5.plot_signature(label,mean_array,time,figtitle,' '.join(mols),textsize,thresh)
+    else:
+        #3D plot for long morphology
+        pu5.plot3D(mean_array,parval,figtitle,mols,xvalues,time)
+        pu5.plot3D(array,parval,figtitle,mols,xvalues,time)
