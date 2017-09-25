@@ -101,7 +101,7 @@ def plotss(plot_mol,xparval,ss):
     fig.canvas.draw()
     return
 
-def plot_signature(condition,traces,time,figtitle,sign_title,textsize,thresholds,moretraces=[]):
+def plot_signature(condition,traces,dt,figtitle,sign_title,textsize,thresholds,moretraces=[]):
      if len(moretraces):
           plot_ltd=1
      else:
@@ -123,7 +123,7 @@ def plot_signature(condition,traces,time,figtitle,sign_title,textsize,thresholds
                colinc=0
           for i,cond in enumerate(condition):
                numpoints=np.shape(traces[i])[0]
-               newtime = np.linspace(0,time[1]*(numpoints-1), numpoints+1)
+               newtime = np.linspace(0,dt*(numpoints-1), numpoints+1)
                axis[0].plot(newtime,traces[i],label=cond,color=colors[int(i*colinc)])
                axis[0].legend(fontsize=legtextsize, loc='best')
                axis[0].set_ylabel('LTP sig (nM) ',fontsize=textsize)
@@ -144,7 +144,7 @@ def plot_signature(condition,traces,time,figtitle,sign_title,textsize,thresholds
                     map_index=int( i/num_par )
                     color_index=int( i%num_par *(255/num_par) )
                     numpoints=np.shape(traces[i])[0]
-                    newtime = np.linspace(0,time[1]*(numpoints-1), numpoints)
+                    newtime = np.linspace(0,dt*(numpoints-1), numpoints)
                     labl=cond[0][0:cond[0].rfind(' ')]
                     if j==0:
                          axis[j].plot(newtime,traces[i,:,row],label=labl,color=colors2D[map_index].__call__(color_index))
@@ -222,14 +222,15 @@ def plot3D(image,parval,figtitle,molecules,xvalues,time):
      from matplotlib.ticker import MultipleLocator
      minx=float(xvalues[0])
      maxx=float(xvalues[-1])
+     asp=time[-1]/(maxx-minx)/len(parval) #may depend on number of subplots! 
      fig,axes=pyplot.subplots(len(parval),1,sharex=True,sharey=True,figsize=(6,9))
      fig.canvas.set_window_title(figtitle)
      fig.suptitle('+'.join(molecules))
      for par in range(len(parval)):
           #for some reason, y axes are not correct without *10 in extent
-          correct=(maxx/len(parval))
-          cax=axes[par].imshow(image[par].T,extent=[0,time[-1],minx*correct,maxx*correct],vmin=0,vmax=np.max(image),origin='lower')
-          fig.colorbar(cax,ax=axes[par],ticks=MultipleLocator(round(np.max(image)/4)))
+          cax=axes[par].imshow(image[par].T,extent=[0,time[-1],minx,maxx],aspect=asp,vmin=0,vmax=np.max(image),origin='lower')
+          if np.min(image[par])>=0:
+               fig.colorbar(cax,ax=axes[par],ticks=MultipleLocator(round(np.max(image)/4)))
           axes[par].set_ylabel(parval[par])
           axes[par].set_xlabel('Time (sec)')
 

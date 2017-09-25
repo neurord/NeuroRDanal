@@ -33,7 +33,7 @@ outputavg=2  #if 1 and args[6] is given will calculate molecule sum, if 2 and ar
 window_size=1  #number of seconds on either side of peak value to average for maximum
 norm=0 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
 trialstats=1
-spatialaverage=1
+spatialaverage=0
 bins=10
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -210,8 +210,10 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     # output of sum of molecules - useful for showing signature
     #############################################################
     if outputavg:
-        pu5.plot3D(LTP_sum,trials,ftuple[0][0:-3],ltp_molecules,spatial_dict.keys(),time)
-        pu5.plot3D(LTD_sum,trials,ftuple[0][0:-3],ltd_molecules,spatial_dict.keys(),time)
+        if spatialaverage:
+            pu5.plot3D(LTP_sum,trials,ftuple[0][0:-3],ltp_molecules,spatial_dict.keys(),time)
+            if num_ltdmols:
+                pu5.plot3D(LTD_sum,trials,ftuple[0][0:-3],ltd_molecules,spatial_dict.keys(),time)
         sum_array=[LTP_sum,LTD_sum]
         Tot_array=[LTP_sumTot,LTD_sumTot]
         sum_name=args[6].split()
@@ -220,7 +222,7 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             basalstrt=sstart[0] #use 1300 for 0 dhpg and sstart for others ; make this another parameter
             basalend=ssend[0] #use 1500 for 0 dhpg and ssend for others 
             if fnum==0:
-                if args[6]:
+                if args[6] and len(sum_name)==2:
                     print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
                 else:
                     print('STATISTICS', args[2],'trials, stderr  ',args[3],'trials, stderr')

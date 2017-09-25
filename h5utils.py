@@ -299,10 +299,11 @@ def calc_sig(all_sig_array,all_peaks,all_molecules,ltp_molecules,trials,fname_ro
     #        apply to each trial, 1st normalize by baseline subtraction (and peak factor)
     for molnum,mol in enumerate(all_molecules):
         region_peak=np.max(all_peaks[mol],axis=0)
+        #print('rg1',mol,region_peak)
         for reg in range(num_regions):
             colset=[tr+reg*trials for tr in range(trials)]
             region_peak[colset]=np.max(region_peak[colset])
-        print (mol,region_peak)
+        print ('region peak',mol,region_peak,colset)
         for fnum,fname in enumerate(fname_roots):
             if mol in ltp_molecules:
                 sig_ltp[fnum]=sig_ltp[fnum]+all_sig_array[mol][fnum]/region_peak
@@ -310,7 +311,7 @@ def calc_sig(all_sig_array,all_peaks,all_molecules,ltp_molecules,trials,fname_ro
                 sig_ltd[fnum]=sig_ltd[fnum]+all_sig_array[mol][fnum]/region_peak
     return sig_ltp,sig_ltd
 
-def sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,time,outfname):
+def sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,dt,outfname):
     f=open(outfname, 'w')
     header='filename trial '
     #This for tr in range(trials) and colset=[col*trials+tr for col in range(num_regions)] is specific to sig.py output format
@@ -324,7 +325,7 @@ def sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,time,outfnam
 		for samp_point in samplepoints:
 		    if fnum==0 and tr==0:
 			for col in range(num_regions):
-			    header=header+str(mol)+'_'+str(int((samp_point[0]+samp_point[1])*0.5*time[1]))+'c'+str(col)+' '
+			    header=header+str(mol)+'_'+str(int((samp_point[0]+samp_point[1])*0.5*dt))+'c'+str(col)+' '
 		    extracted_data=all_sig_array[mol][fnum][samp_point[0]:samp_point[1]].T
 		    samples.append(list(np.mean(extracted_data[colset],axis=1)))
 	    if fnum==0 and tr==0:
@@ -336,20 +337,20 @@ def sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,time,outfnam
     f.close()
     return
 
-def sig_outfile_multi(time_thresh,time,samp_times,pstrt,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array):
+def sig_outfile_multi(time_thresh,dt,samp_times,pstrt,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array):
     for dur in time_thresh:  
         samplepoints=[(pstrt,pend)] 
-        win=int(float(dur)/time[1]/2) 
+        win=int(float(dur)/dt/2) 
         for st in samp_times: 
- 	    t=int(float(st)/time[1])+pstrt-win
+ 	    t=int(float(st)/dt)+pstrt-win
 	    samplepoints.append((t,t+2*win)) #alternative 1 - if multiple sample points, create single file with multiple points
 	#
-        sample_strings=[str(int((point[0]-pstrt+win)*time[1])) for point in samplepoints[1:]]
+        sample_strings=[str(int((point[0]-pstrt+win)*dt)) for point in samplepoints[1:]]
         sample_str='_'+'and'.join(sample_strings)+'_'
         outfname=fname_roots[0].split('-')[0]+sample_str+str(dur)+fname_suffix+'.txt'
         f=open(outfname, 'w')
         #
-        sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,time,outfname)
+        sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,dt,outfname)
     return
 
 def sig_outfile_single(time_thresh,time,samp_times,pstart,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array):

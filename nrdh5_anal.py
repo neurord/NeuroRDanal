@@ -16,8 +16,6 @@
 #Can process multiple trials for each parameter variation
 #It will provide region averages (each spine, dendrite submembrane, cytosol)
 #If only a single file, will plot multiple trials; if multiple trials, plots the mean over trials
-#Future improvements:
-#   spatial average along dendrite
 
 from __future__ import print_function
 from __future__ import division
@@ -47,7 +45,7 @@ show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-showplot=2    #2 indicates plot the head conc, 0 means no plots
+showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=110 #time to stop calculating AUC
