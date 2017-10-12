@@ -363,11 +363,11 @@ else:
             auc_label[par].append(label+' '+str(np.round(auc[par,sp],1))+" "+regionnames[sp])
 pyplot.ion()
 if len(ltd_molecules):
-    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh,sig_ltd)
+    pu5.plot_signature(auc_label,sig_ltp,dt[0],figtitle,sign_title,textsize,thresh,sig_ltd)
     numcol=2
 else:
     numcol=1
-    pu5.plot_signature(auc_label,sig_ltp,time,figtitle,sign_title,textsize,thresh)
+    pu5.plot_signature(auc_label,sig_ltp,dt[0],figtitle,sign_title,textsize,thresh)
 if spatialaverage:
     pu5.plot3D(sig_ltp,parval,figtitle,ltp_molecules,spatial_dict.keys(),time)
     if len(ltd_molecules):
