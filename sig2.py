@@ -1,6 +1,6 @@
 #sig2-fig.py
 #Generate signature traces and plot them, or create files of time samples for analysis in other software
-#ARGS="subdir/fileroot,parameter,LTPmol,LTDmol,tstart tend,4 thresholds,sample times" where tstart and tend used to calculate basal value
+#ARGS="subdir/fileroot,parameter,LTPmol,LTDmol,tstart tend,4 thresholds (optional)" where tstart and tend used to calculate basal value
 #ARGS="Model_SPNspineAChm4R_Gshydr5_GapD,,Aphos CKpCam Epac1 Pkc,2ag,10 20"
 #for file output:
 #ARGS="subdir/fileroot,parameter,LTPmol,LTDmol,tstart tend,sample durs,sample times,file_suffix"
@@ -59,28 +59,30 @@ ltd_molecules=args[3].split()
 tstart,tend=args[4].split()
 
 #if provide file suffix, then files will be written, and plots will not be generated
-if len(args[7]):
+if len(args)>7:
     fname_suffix=args[7]
     plotYN=0
     normYN=0
-else:
+    if len(args[5]):
+        mean_dur=args[5].split()
+    else:
+        mean_dur=[60,30] #units are sec
+    if len(args[6]):
+        samp_times=args[6].split()
+    else:
+        samp_times=[60,120]
+else: #if no file suffix, optionally provide threshold for calculating AUC.  Normalize only if specified above
     fname_suffix=''
     plotYN=1
-
-if len(args[5]):
-    if plotYN:
-        thresh=args[5]
+    if len(args)>5:  #optional specification of thresholds
+        thresh=args[5].split()
+        if len(thresh)==1:
+            thresh=[thresh for i in range(4)]
+        elif len(thresh)==2:
+            thresh=thresh+thresh
     else:
-        time_thresh=args[5].split()
-else:
-    if plotYN:
         thresh=[0,0,0,0]
-    else:
-        time_thresh=[60,30] #units are sec.
-if len(args[6]):
-    samp_times=args[6].split()
-else:
-    samp_times=[60,120]
+    print("thresholds", thresh)
 
 all_molecules=sorted(ltp_molecules+ltd_molecules)
 num_mols=len(all_molecules)
@@ -156,9 +158,9 @@ if plotYN:
         pu5.plot_signature(label,sig_ltp,time[1],figtitle,sign_title,textsize,thresh)
 else:
     #or create output files for analysis of signatures. either 1 file with multiple points
-    h5utils.sig_outfile_multi(time_thresh,time[1],samp_times,pstrt,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array)
+    h5utils.sig_outfile_multi(mean_dur,time[1],samp_times,pstrt,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array)
     #or mulitple files, each with basal and 1 other point
-    #h5utils.sig_outfile_single(time_thresh,time,samp_times,pstart,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array)
+    #h5utils.sig_outfile_single(mean_dur,time,samp_times,pstart,pend,fname_roots,fname_suffix,col_num,trials,all_sig_array)
 
 #To write the signature file traces:
 if any([col.startswith('sa1[') for col in coltype]):
@@ -173,49 +175,50 @@ else:
 if np.min(xvalues)<0:
     xvalues=[x-np.min(xvalues) for x in xvalues]
 
-#set up arrays for storing mean over trials
-num_regions=int(len(col_num)/trials)
-mean_sigs_ltp=np.zeros((len(fname_roots),len(time),num_regions))
-mean_sigs_ltd=np.zeros((len(fname_roots),len(time),num_regions))
-#abbreviated column labels
-newlabel=[''.join(newdomain[x]) for x in range(len(newdomain))]
-sig=sig_ltp-sig_ltd
-if suffix=='plas':
-    new_suffix='sp'
-elif suffix=='dend':
-    new_suffix='dnd'
-else:
-    new_suffix='unk'
-for ii,file_cond in enumerate(fname_roots):
-    for array,plastype,molecules in zip([sig_ltp,sig_ltd,sig],['ltp','ltd','sig'],[ltp_molecules,ltd_molecules,ltp_molecules+ltd_molecules]):
-        #Automatic file naming and column headers, Write the file
-        fname=file_cond+'_'+plastype+''.join(molecules)+new_suffix+'.txt'
-        param_name='_'.join(file_cond.split('-')[1:]).replace('stim','')
-        header='time '+' '.join([plastype+'_'+param_name+labl for labl in newlabel])
-        f=open(fname, 'w')
-        f.write(' '.join(molecules)+'\n')
-        f.write(header+'\n')
-        np.savetxt(f,np.column_stack((time,array[ii])), fmt='%.4f', delimiter=' ')
-        f.close()
-        #average over trials, write to file
-        mean_sig=np.zeros(np.shape(mean_sigs_ltp)[1:])
-        for reg in range(num_regions):
-            colset=[tr+reg*trials for tr in range(trials)]
-            mean_sig[:,reg]=np.mean(array[ii,:,colset],axis=0)
-        if plastype=='ltp':
-            mean_sigs_ltp[ii,:,:]=mean_sig
-        elif plastype=='ltd':
-            mean_sigs_ltd[ii,:,:]=mean_sig
-        fname=file_cond+'_'+plastype+''.join(molecules)+new_suffix+'avg.txt'
-        header='time '+' '.join([plastype+'_'+param_name+labl for labl in meanlabl])
-        f=open(fname, 'w')
-        f.write(' '.join(molecules)+'\n')
-        f.write(header+'\n')
-        np.savetxt(f,np.column_stack((time,mean_sig)), fmt='%.4f', delimiter=' ')
-        f.close()
+if plotYN:
+    #set up arrays for storing mean over trials
+    num_regions=int(len(col_num)/trials)
+    mean_sigs_ltp=np.zeros((len(fname_roots),len(time),num_regions))
+    mean_sigs_ltd=np.zeros((len(fname_roots),len(time),num_regions))
+    #abbreviated column labels
+    newlabel=[''.join(newdomain[x]) for x in range(len(newdomain))]
+    sig=sig_ltp-sig_ltd
+    if suffix=='plas':
+        new_suffix='sp'
+    elif suffix=='dend':
+        new_suffix='dnd'
+    else:
+        new_suffix='unk'
+    for ii,file_cond in enumerate(fname_roots):
+        for array,plastype,molecules in zip([sig_ltp,sig_ltd,sig],['ltp','ltd','sig'],[ltp_molecules,ltd_molecules,ltp_molecules+ltd_molecules]):
+            #Automatic file naming and column headers, Write the file
+            fname=file_cond+'_'+plastype+''.join(molecules)+new_suffix+'.txt'
+            param_name='_'.join(file_cond.split('-')[1:]).replace('stim','')
+            header='time '+' '.join([plastype+'_'+param_name+labl for labl in newlabel])
+            f=open(fname, 'w')
+            f.write(' '.join(molecules)+'\n')
+            f.write(header+'\n')
+            np.savetxt(f,np.column_stack((time,array[ii])), fmt='%.4f', delimiter=' ')
+            f.close()
+            #average over trials, write to file
+            mean_sig=np.zeros(np.shape(mean_sigs_ltp)[1:])
+            for reg in range(num_regions):
+                colset=[tr+reg*trials for tr in range(trials)]
+                mean_sig[:,reg]=np.mean(array[ii,:,colset],axis=0)
+            if plastype=='ltp':
+                mean_sigs_ltp[ii,:,:]=mean_sig
+            elif plastype=='ltd':
+                mean_sigs_ltd[ii,:,:]=mean_sig
+            fname=file_cond+'_'+plastype+''.join(molecules)+new_suffix+'avg.txt'
+            header='time '+' '.join([plastype+'_'+param_name+labl for labl in meanlabl])
+            f=open(fname, 'w')
+            f.write(' '.join(molecules)+'\n')
+            f.write(header+'\n')
+            np.savetxt(f,np.column_stack((time,mean_sig)), fmt='%.4f', delimiter=' ')
+            f.close()
 
-for array,mean_array,mols in zip([sig_ltp,sig_ltd],[mean_sigs_ltp,mean_sigs_ltd],[ltp_molecules,ltd_molecules]):
-    #3D plot for long morphology
-    pu5.plot3D(mean_array,parval,figtitle,mols,xvalues,time)
-    #pu5.plot3D(array,parval,figtitle,mols,xvalues,time)
-pu5.plot3D(mean_sigs_ltp-mean_sigs_ltd,parval,figtitle,ltp_molecules+ltd_molecules,xvalues,time)
+    for array,mean_array,mols in zip([sig_ltp,sig_ltd],[mean_sigs_ltp,mean_sigs_ltd],[ltp_molecules,ltd_molecules]):
+        #3D plot for long morphology
+        pu5.plot3D(mean_array,parval,figtitle,mols,xvalues,time)
+        #pu5.plot3D(array,parval,figtitle,mols,xvalues,time)
+    pu5.plot3D(mean_sigs_ltp-mean_sigs_ltd,parval,figtitle,ltp_molecules+ltd_molecules,xvalues,time)
