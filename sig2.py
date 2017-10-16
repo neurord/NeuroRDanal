@@ -140,13 +140,13 @@ for molnum,mol in enumerate(all_molecules):
 
 ########################### Signature part ##########################
 
+domain=[head_names[x].split(mol) for x in col_num]
 if plotYN:
     #calculate signatures
     sig_ltp,sig_ltd=h5utils.calc_sig(all_sig_array,all_peaks,all_molecules,ltp_molecules,trials,fname_roots,time,col_num)
     #show figures (and create output files for publication figures?)
     figtitle=fnm[0:fnm.find('-')]
     label=[[] for p in parval]
-    domain=[head_names[x].split(mol) for x in col_num]
     for par in range(len(parval)):
         label[par]=[parval[par]+' '+dom[0][0:6]+dom[1] for dom in domain]
     sign_title=args[2]+' vs '+args[3]

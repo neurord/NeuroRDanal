@@ -135,10 +135,10 @@ def plot_signature(condition,traces,dt,figtitle,sign_title,textsize,thresholds,m
                     axis[1].set_xlabel('Time (sec)',fontsize=textsize)
      else:
           domain=[]
+          num_par=len(condition)/2
           for row,j in enumerate(range(0,numrows*numcols,numcols)):
                #thresh_index=np.ceil(row/numrows)
                domain.append(condition[0][row].split()[-1])
-               num_par=len(condition)/2
                for i,cond in enumerate(condition):
                     #the following assumes that first parameter has only two values
                     map_index=int( i/num_par )

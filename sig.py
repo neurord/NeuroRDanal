@@ -52,6 +52,13 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
 ftuples,parlist,params=h5utils.argparse(args)
 figtitle=args[0].split('/')[-1]
 
+ltp_molecules=args[2].split()
+ltd_molecules=args[3].split()
+if len(args[5]):
+    thresh=args[5].split()
+else:
+    thresh=['0', '0', '0', '0']
+
 try:
     data.close()
 except Exception:
@@ -98,12 +105,6 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     if fnum==0:
     #
         #Get list of molecules for LTP and list for LTD.  identify which output sets and voxels they are in
-        ltp_molecules=args[2].split()
-        ltd_molecules=args[3].split()
-        if len(args[5]):
-            thresh=args[5].split()
-        else:
-            thresh=['0', '0', '0', '0']
         num_ltpmols=len(ltp_molecules)
         num_ltdmols=len(ltd_molecules)
         all_molecules=ltp_molecules+ltd_molecules
@@ -216,16 +217,19 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
                 pu5.plot3D(LTD_sum,trials,ftuple[0][0:-3],ltd_molecules,spatial_dict.keys(),time)
         sum_array=[LTP_sum,LTD_sum]
         Tot_array=[LTP_sumTot,LTD_sumTot]
-        sum_name=args[6].split()
+        if len(args)>6:
+            sum_name=args[6].split()
+        if len(args)<=6 or len(sum_name)==0:
+            sum_name=[ltp_molecules[0],ltd_molecules[0]]
+            outputavg=1
+        if len(sum_name)<2:
+            sum_name.append('ltdmol')
         if trialstats:
             endpt=1200 #to find proper peak with bathDaCa; make this another parameter
             basalstrt=sstart[0] #use 1300 for 0 dhpg and sstart for others ; make this another parameter
             basalend=ssend[0] #use 1500 for 0 dhpg and ssend for others 
             if fnum==0:
-                if args[6] and len(sum_name)==2:
-                    print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
-                else:
-                    print('STATISTICS', args[2],'trials, stderr  ',args[3],'trials, stderr')
+                print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
             LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
             LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
             print('basal',np.round(LTP_basal,1), np.round(np.std(LTP_basal)/np.sqrt(len(trials)),1),
