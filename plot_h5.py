@@ -74,15 +74,16 @@ def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsi
           for imol in range(len(plotmol)):
                #axis[imol].autoscale(enable=True,tight=False)
                #change label back to parval[pnum] after figures created
+               maxpoint=min(len(timearray[imol][pnum][:]),len(plotarray[imol][pnum][:]))
                if num_spines>1 and plottype==2:
                     for spnum,sp in enumerate(stimspines):
                          new_index=int((parlist[par_index].index(parval[pnum])*num_spines+spnum)*colinc[par_index]*partial_scale)
                          #Note: this will not give expected color if 2 dimensions of parameters
                          new_col=colors.colors[new_index]
-                         axis[imol].plot(timearray[imol][pnum][:],plotarray[imol][pnum][:].T[spnum],
+                         axis[imol].plot(timearray[imol][pnum][0:maxpoint],plotarray[imol][pnum][0:maxpoint].T[spnum],
                                          label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
                else:
-                    axis[imol].plot(timearray[imol][pnum][:],plotarray[imol][pnum][:],label=plotlabel,color=mycolor)
+                    axis[imol].plot(timearray[imol][pnum][0:maxpoint],plotarray[imol][pnum][0:maxpoint],label=plotlabel,color=mycolor)
                axis[imol].set_ylabel(plotmol[imol]+' (nM)',fontsize=textsize)
                axis[imol].tick_params(labelsize=textsize)
           axis[imol].set_xlabel('Time (sec)',fontsize=textsize)
