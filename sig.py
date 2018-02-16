@@ -29,12 +29,16 @@ import h5py as h5
 spinehead="head" #name of spine head from morphology file
 dend="dend"
 textsize=14 #make bigger for presentations
-outputavg=2  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
+outputavg=1  #if 1 and args[6] is given will calculate molecule sum, if 2 and args[6] will create output file with molecule sum
 window_size=1  #number of seconds on either side of peak value to average for maximum
 norm=0 #set to 0 to eliminate baseline subtraction (good for output signatures), set to 1 for baseline subtraction (good for AUC calculation)
 trialstats=1
 spatialaverage=0
 bins=10
+trial_auc_ratio=0 #calculate ratio of auc to mean auc for dhpg=0.  Only relevant for Uchi simulations
+endpt=2000 #1200 for AUC for Uchi sims, 2000 to find proper peak with bathDaCa; make this another parameter
+LTPbas =665.53#567.15 #use to calculate ratio of peak versus basal, e.g. for Dp34 or Dp75
+LTDbas=10347.56#10377.95
 #######################################################
 Avogadro=6.023e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15
@@ -68,6 +72,8 @@ except Exception:
 parval=[]
 numfiles=len(ftuples)
 signature_array=[]
+overall_baseline=[]
+LTD_auc_all={}
 for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     data,maxvols,TotVol,trials,seeds,arraysize,p=h5utils.initialize(ftuple,numfiles,parval)
     if len(p):
@@ -111,6 +117,9 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
         num_mols=len(all_molecules)
         if numfiles>1:
             signature_array=[[] for mol in range(num_mols)]
+        if trial_auc_ratio:
+            for item in parlist[0]:
+                LTD_auc_all[item]={}
     ######################################
     #Calculate region averages, such as indivivdual spines and non-spines
     ######################################
@@ -225,13 +234,13 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
         if len(sum_name)<2:
             sum_name.append('ltdmol')
         if trialstats:
-            endpt=1200 #to find proper peak with bathDaCa; make this another parameter
-            basalstrt=sstart[0] #use 1300 for 0 dhpg and sstart for others ; make this another parameter
-            basalend=ssend[0] #use 1500 for 0 dhpg and ssend for others 
+            basalstrt=sstart[0] 
+            basalend=ssend[0] 
             if fnum==0:
                 print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
             LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
             LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
+            overall_baseline.append(LTD_basal)
             print('basal',np.round(LTP_basal,1), np.round(np.std(LTP_basal)/np.sqrt(len(trials)),1),
                   np.round(LTD_basal,0), np.round(np.std(LTD_basal)/np.sqrt(len(trials)),1))
             LTP_peak=[LTP_sumTot[i,ssend[0]:endpt].max() for i in range(len(trials))]
@@ -243,9 +252,12 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             for i in range(len(trials)):
                 normD[i,:]=LTD_sumTot[i,:]-LTD_basal[i]
                 normP[i,:]=LTP_sumTot[i,:]-LTP_basal[i]
-            LTD_auc=[np.sum(normD[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
-            LTP_auc=[np.sum(normP[i][ssend[0]:])*dt[0]/msec_per_sec for i in range(len(trials))]
+            LTD_auc=[np.sum(normD[i][ssend[0]:endpt])*dt[0]/msec_per_sec for i in range(len(trials))]
+            LTP_auc=[np.sum(normP[i][ssend[0]:endpt])*dt[0]/msec_per_sec for i in range(len(trials))]
+            if trial_auc_ratio:
+                LTD_auc_all[ftuple[1][0]][ftuple[1][1]]=LTD_auc
             print('peak',np.round(LTP_peak,1), np.round(LTD_peak,1), 'min',np.round(LTP_min,1), np.round(LTD_min,1))
+            #print('peak ratio',np.round(np.array(LTP_peak)/LTPbas,3), np.round(np.array(LTD_peak)/LTDbas,3), 'min',np.round(np.array(LTP_min)/LTPbas,3), np.round(np.array(LTD_min)/LTDbas,3))
             print('auc', np.round(LTP_auc,2),np.round(np.mean(LTP_auc),2),np.round(LTD_auc,2),np.round(np.mean(LTD_auc),2))
         for num,nm in enumerate(sum_name):
             sum_header='time  '
@@ -294,6 +306,14 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             if fnum==0 and num==0:
                 print ('fname                     base   peak    inc     min     dec')
             print ('{0:25}  {1:.1f}  {2:.1f}  {3:.3f}  {4:.1f}  {5:.3f}'.format(''.join(parval[fnum])+nm,base_sum,peak_sum,peak_sum/base_sum,min_sum,min_sum/base_sum))
+if trial_auc_ratio:
+    print('overall baseline',np.round(np.mean(overall_baseline),3),'use on line 251 for more consistent baseline subtraction' )
+    print ('auc calculated between',ssend[0]*dt,'and', endpt*dt, ', ratio with the 0dhpg case')
+    print('dur  dhpg  trials                         mean stdev stderr')
+    for dur,durdict in sorted(LTD_auc_all.items(), key=lambda x:x[1]):
+        for dhpg in sorted(durdict.keys(), key=lambda x:int(x)):
+            auc_ratio=durdict[dhpg]/np.mean(durdict['0'])
+            print(dur,dhpg,auc_ratio, np.round(np.mean(auc_ratio),3), np.round(np.std(auc_ratio),3), np.round(np.std(auc_ratio)/np.sqrt(len(auc_ratio)),3))
 #####################################################################
 #Calculate signature
 #####################################################################

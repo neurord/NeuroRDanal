@@ -58,7 +58,7 @@ ltp_molecules=args[2].split()
 ltd_molecules=args[3].split()
 tstart,tend=args[4].split()
 
-#if provide file suffix, then files will be written, and plots will not be generated
+#if provide file suffix, then sample times file will be written, and plots will not be generated
 if len(args)>7:
     fname_suffix=args[7]
     plotYN=0

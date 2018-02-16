@@ -48,7 +48,7 @@ outputavg=0
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
-endtime=110 #time to stop calculating AUC
+endtime=150 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal
 textsize=10 #for plots.  Make bigger for presentations
 
 #Example of how to total some molecule forms; turn off with tot_species={}
