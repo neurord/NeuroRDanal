@@ -61,3 +61,7 @@ Utilities used by neurord_analysis for reading the first header line and determi
 **7. plot_utils.py**
 --------------------
 Utilities used by neurord_analysis for plotting the NeuroRD output
+
+**8. sig2.py**
+---------------
+Program to read in the text file outputs of sig.py and generate a file of molecule-space-time samples - one line per file - for statistical analysis.  Alternatively, generate signature traces (normalized sum of a subset of the molecules) and plot them.
