@@ -5,10 +5,10 @@ NeuroRDanal
 **1. nrdh5_anal.py**
 ---------------------
 
-Processes h5 output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. To process multiple files, the first part of file name must be the same for all files, and parameter variations are specified as -par1-par2.  In addition, the set of files MUST use the same morphology file and MUST use the same discretization (specified in the top level model file).  If the set of files differ in morphology, then each file must be processed separately.
+Processes hdf5 output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. To process multiple files, the first part of file name must be the same for all files, and parameter variations are specified as -par1-par2.  In addition, the set of files MUST use the same morphology file and MUST use the same discretization (specified in the top level model file).  If the set of files differ in morphology, then each file must be processed separately.
 Graphs are generated for either a set of specified molecules, or all molecules if none are specified.  Basal value, peak and minimum are also printed, where basal value is calculated between two specified timepoints (basal_start basal_end).
 
-First, download nrdh5_anal.py, h5utils.py, and plot_h5.py.  Put these into a subdirectory called "NeuroRDanal".  Set your python path to the directory containing NeuroRDanal.  For example, if NeuroRDanal is in the directory /home/user, then use the bash command: export $PYTHONPATH=/home/user.
+First, download NeuroRDanal form the GitHub website.  Make sure they are in a subdirectory called "NeuroRDanal".  Set your python path to the directory containing NeuroRDanal.  For example, if NeuroRDanal is in the home directory of the user, then use the bash command: export $PYTHONPATH=$HOME.
 
 To run the program from within python, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,basal_start basal_end" then execfile('nrdh5_anal.py')
 from outside python, type python nrdh5_anal "subdir/fileroot [par1 par2] [mol1 mol2] [basal_start basal_send]"
@@ -49,7 +49,7 @@ Utilities used by nrdh5_anal.py and sig.py for creating region averages
 ---------------------------
 Processes text file output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. In other words, the set of files MUST use the same morphology file and MUST use the same discretization (specified in the top level model file).  If the set of files differ in morphology, then each file must be processed separately. Don't use this unless you can't get the hdf5 output to work. 
 
-First, download neurord_analysis.py, header_parse.py, and plot_utils.py.  Put these into a subdirectory called "NeuroRDanal".  Set your python path to the directory containing NeuroRDanal.  For example, if NeuroRDanal is in the directory /home/user, then use the bash command: export $PYTHONPATH=/home/user.
+First, download NeuroRDanal form the GitHub website.  Make sure they are in a subdirectory called "NeuroRDanal".  Set your python path to the directory containing NeuroRDanal.  For example, if NeuroRDanal is in the home directory of the user, then use the bash command: export $PYTHONPATH=$HOME.
 
 To run the program from within python, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,basal_start basal_end" then execfile('neurord_analysis.py')
 from outside python, type python neurord_analysis "subdir/fileroot [par1 par2] [mol1 mol2] [basal_start basal_end]"
