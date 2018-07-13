@@ -1,5 +1,5 @@
 #neurdh5_anal.py
-#in python, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,sstart ssend,rows" then execfile('neurdh5_anal.py')
+#in python, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,sstart ssend,rows" then execfile('path/to/file/nrdh5_anal.py')
 #DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS, rows is optional
 #mol1 mol2, etc are the names of molecles to process
 #par1 and optionally par2 are specifications of parameter variations, as follows:
