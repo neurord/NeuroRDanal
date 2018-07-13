@@ -18,8 +18,8 @@ from matplotlib import pyplot
 from string import *
 import sys  
 import glob
-import header_parse as hparse
-import plot_utils as pu
+from NeuroRDanal import header_parse as hparse
+from NeuroRDanal import plot_utils as pu
 
 #######################################################
 #indicate the name of the injection spines if you want to exclude them
@@ -43,11 +43,11 @@ showplot=2
 #showplot=1 plots overallmean, showplot=2 allows plotregion to specify region number in the region_list
 plotregion=0
 ##change these endings depending on whether using neurord3.x:
-#meshend="*mesh.txt.out"
-#concend='all-conc.txt.out'
+meshend="*mesh.txt.out"
+concend='-conc.txt.out'
 ## or neurord2.x (uncomment these)
 meshend="*mesh.txt"
-concend='all_species-conc.txt'
+concend='*conc.txt'
 #Example of how to total some molecule forms; turn off with tot_species={}
 #tot_species={
 #        "PKAtot":["PKA", "PKAcAMP2", "PKAcAMP4", "PKAr"],
@@ -183,13 +183,13 @@ for fnum,ftuple in enumerate(ftuples):
     plot_array=np.zeros((rows,len(plot_molecules)))
     dt=time[1]#/1000
     if len(args)>3:
-            sstart = float(args[3].split(" ")[0]) // dt
-            ssend = float(args[3].split(" ")[1]) // dt
+            sstart = int(float(args[3].split(" ")[0]) // dt)
+            ssend = int(float(args[3].split(" ")[1]) // dt)
             if ssend>0.5*rows:
                 print("WARNING*******. Possible SS time issue: only", rows, "rows, end time=", time[-1])
             if ssend>rows:
-                ssend=0.1*rows
-                sstart=0.075*rows
+                ssend=int(0.1*rows)
+                sstart=int(0.075*rows)
     else:
             sstart=int(0.075*rows)
             ssend=int(0.1*rows)
