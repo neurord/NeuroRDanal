@@ -1,2 +1,7 @@
 *.pyc
 *~
+*.pdf
+*.png
+*.tiff
+*.ode
+*.jpg
