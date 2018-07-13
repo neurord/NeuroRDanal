@@ -44,7 +44,7 @@ showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=0
+outputavg=1
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
@@ -101,7 +101,6 @@ for fnum,ftuple in enumerate(ftuples):
     #   Extract region and structure voxels and volumes
     ##########################################################
     if maxvols>1 and fnum==0:
-        molecules=data['model']['species'][:]
         structType=data['model']['grid'][:]['type']
         region_list,region_dict,region_struct_dict=h5utils.subvol_list(structType,data['model'])
         #Replace the following with test for whether there is more than one "group"
@@ -131,6 +130,7 @@ for fnum,ftuple in enumerate(ftuples):
     ##### Initialization done only for first file in the list
     #
     if fnum==0:
+        molecules=data['model']['species'][:]
         #initialize plot stuff, arrays for static measurements, and find molecules among the output sets
         if len(args[2].split()):
             plot_molecules=args[2].split()
@@ -258,8 +258,8 @@ for fnum,ftuple in enumerate(ftuples):
               if fnum==0 and molecule_name_issue==0:
                   print("Choose molecules from:", molecules)
                   molecule_name_issue=1
-              time_array.append(time)
-              plot_array.append(np.zeros(len(time)))
+              time_array.append([])
+              plot_array.append([])
               #
     else:
         ######################################
@@ -287,8 +287,20 @@ for fnum,ftuple in enumerate(ftuples):
               if fnum==0 and molecule_name_issue==0:
                   print("Choose molecules from:", molecules)
                   molecule_name_issue=1
-              time_array.append(time)
-              plot_array.append(np.zeros(len(time)))
+              time_array.append([])
+              plot_array.append([])
+          if outputavg==1:
+            #This output is needed to extract txt file from h5 file for plotting
+            outfname=ftuple[0][0:-3]+'_'+mol+'_avg.txt'
+            if len(params)==1:
+                param_name=params[0]+parval[fnum]
+            if len(params)==2:
+                param_name=params[0]+parval[fnum][0]+params[1]+parval[fnum][1]
+            print('output file:', outfname,  ' param_name:', param_name)
+            f=open(outfname, 'w')
+            f.write('time    '+os.path.basename(ftuple[0]).split('.')[0]+'_'+mol+'\n')
+            np.savetxt(f, np.row_stack((time_array,plot_array)).T, fmt='%.4f', delimiter=' ')
+            f.close()
     ######################################
     #Whether 1 voxel or multi-voxel, create plotting array of means for all molecules, all files, all trials
     ##########################################
