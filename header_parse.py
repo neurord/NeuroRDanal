@@ -10,7 +10,7 @@ def header_parse(header,maxvols,prninfo):
     dot='.'
     #
     #number of voxels in the file
-    volnum=np.zeros(maxvols)
+    volnum=np.zeros(maxvols,dtype=int)
     regionID=list()
     structType=list()
     molecules=list()
