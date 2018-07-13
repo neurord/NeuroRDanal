@@ -5,7 +5,7 @@ from string import *
 import glob
 import os
 import h5py as h5
-import plot_h5 as pu5
+from NeuroRDanal import plot_h5 as pu5
 from collections import OrderedDict
 from orderedmultidict import omdict
 
@@ -20,8 +20,8 @@ from orderedmultidict import omdict
 def decode(table):
     return np.array([s.decode('utf-8') for s in table])
 
-Avogadro=6.023e14 #to convert to nanoMoles
-mol_per_nM_u3=Avogadro*1e-15
+Avogadro=6.02214179e14 #to convert to nanoMoles
+mol_per_nM_u3=Avogadro*1e-15 #0.6022 = PUVC
 
 def new_head(header,param_name):
     newheader=''
@@ -317,23 +317,22 @@ def sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,dt,outfname)
     #This for tr in range(trials) and colset=[col*trials+tr for col in range(num_regions)] is specific to sig.py output format
     num_regions=int(len(col_num)/trials)
     for fnum,fname in enumerate(fname_roots):
-	for tr in range(trials):
-	    colset=[col*trials+tr for col in range(num_regions)]
-	    samples=[]
-	    for mol in sorted(all_sig_array.keys()):
+        for tr in range(trials):
+            colset=[col*trials+tr for col in range(num_regions)]
+            samples=[]
+            for mol in sorted(all_sig_array.keys()):
                 #print(fname,mol)
-		for samp_point in samplepoints:
-		    if fnum==0 and tr==0:
-			for col in range(num_regions):
-			    header=header+str(mol)+'_'+str(int((samp_point[0]+samp_point[1])*0.5*dt))+'c'+str(col)+' '
-		    extracted_data=all_sig_array[mol][fnum][samp_point[0]:samp_point[1]].T
-		    samples.append(list(np.mean(extracted_data[colset],axis=1)))
-	    if fnum==0 and tr==0:
-		f.write(header+'\n')
-	    outputrow=[ np.round(val,2) for sublist in samples for val in sublist]
-	    out=str(tr)+' '+" ".join(str(e) for e in outputrow)
-	    f.write(fname[fname.find('-'):]+' '+out+'\n')
-	#print(fname,out)
+                if fnum==0 and tr==0:
+                    for col in range(num_regions):
+                        header=header+str(mol)+'_'+str(int((samp_point[0]+samp_point[1])*0.5*dt))+'c'+str(col)+' '
+                        extracted_data=all_sig_array[mol][fnum][samp_point[0]:samp_point[1]].T
+                    samples.append(list(np.mean(extracted_data[colset],axis=1)))
+            if fnum==0 and tr==0:
+                f.write(header+'\n')
+            outputrow=[ np.round(val,2) for sublist in samples for val in sublist]
+            out=str(tr)+' '+" ".join(str(e) for e in outputrow)
+            f.write(fname[fname.find('-'):]+' '+out+'\n')
+        #print(fname,out)
     f.close()
     return
 
@@ -342,8 +341,8 @@ def sig_outfile_multi(time_thresh,dt,samp_times,pstrt,pend,fname_roots,fname_suf
         samplepoints=[(pstrt,pend)] 
         win=int(float(dur)/dt/2) 
         for st in samp_times: 
- 	    t=int(float(st)/dt)+pstrt-win
-	    samplepoints.append((t,t+2*win)) #alternative 1 - if multiple sample points, create single file with multiple points
+            t=int(float(st)/dt)+pstrt-win
+            samplepoints.append((t,t+2*win)) #alternative 1 - if multiple sample points, create single file with multiple points
 	#
         sample_strings=[str(int((point[0]-pstrt+win)*dt)) for point in samplepoints[1:]]
         sample_str='_'+'and'.join(sample_strings)+'_'
@@ -358,7 +357,7 @@ def sig_outfile_single(time_thresh,time,samp_times,pstart,pend,fname_roots,fname
         samplepoints=[(pstrt,pend)] 
         win=int(float(dur)/time[1]/2) 
         for st in samp_times: 
- 	    t=int(float(st)/time[1])+pstrt-win
+            t=int(float(st)/time[1])+pstrt-win
             samplepoints=[(pstrt,pend),(t,t+2*win)] #alternative 2 - if multiple sample points, create multiple files
 	    #
             sample_strings=[str(int((point[0]-pstrt+win)*time[1])) for point in samplepoints[1:]]
