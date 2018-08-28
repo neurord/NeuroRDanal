@@ -87,7 +87,7 @@ def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsi
                axis[imol].set_ylabel(plotmol[imol]+' (nM)',fontsize=textsize)
                axis[imol].tick_params(labelsize=textsize)
           axis[imol].set_xlabel('Time (sec)',fontsize=textsize)
-     axis[0].legend(fontsize=legtextsize, loc='best')
+     axis[imol].legend(fontsize=legtextsize, loc='best')
      fig.canvas.draw()
      return
 

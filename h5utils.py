@@ -227,9 +227,15 @@ def multi_spines(model):
     #create list of spine voxels
     #first identify all spine voxels and spine labels
     groups=model['grid'][:]['group']
+    newgroups=list()
     for n,i in enumerate(groups):
-        if i =='':
-            groups[n]='nonspine'
+        #in python3 must explicitly decode from byte to string
+        if type(i) is np.bytes_:
+            groups[n]=i.decode('UTF-8')
+            newgroups.append(i.decode('UTF-8'))
+        if newgroups[n] =='':
+            newgroups[n]='nonspine'
+    groups=newgroups
     spine_voxel=omdict((zip(groups,range(len(model['grid'])) ) ))
     spine_voxel_vol=omdict(( zip(groups,model['grid'][:]['volume']) ))
     #create a unique set of spine labels
