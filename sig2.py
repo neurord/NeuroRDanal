@@ -1,4 +1,4 @@
-#sig2-fig.py
+#sig2.py
 #Generate signature traces and plot them, or create files of time samples for analysis in other software
 #ARGS="subdir/fileroot,parameter,LTPmol,LTDmol,tstart tend,4 thresholds (optional)" where tstart and tend used to calculate basal value
 #ARGS="Model_SPNspineAChm4R_Gshydr5_GapD,,Aphos CKpCam Epac1 Pkc,2ag,10 20"

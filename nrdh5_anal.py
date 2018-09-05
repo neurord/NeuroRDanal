@@ -270,7 +270,7 @@ for fnum,ftuple in enumerate(ftuples):
         voxel=0
         for mol in plot_molecules:
           if out_location[mol]!=-1:
-            outset = out_location[mol]['location'].keys()[0]
+            outset = list(out_location[mol]['location'].keys())[0]
             imol=out_location[mol]['location'][outset]['mol_index']
             tempConc=np.zeros((len(trials),out_location[mol]['samples']))
             time_array.append(data[trials[0]]['output'][outset]['times'][:]/1000)
