@@ -130,7 +130,7 @@ for fnum,ftuple in enumerate(ftuples):
     ##### Initialization done only for first file in the list
     #
     if fnum==0:
-        molecules=data['model']['species'][:]
+        molecules=util.decode(data['model']['species'][:])
         #initialize plot stuff, arrays for static measurements, and find molecules among the output sets
         if len(args[2].split()):
             plot_molecules=args[2].split()
