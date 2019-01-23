@@ -106,6 +106,7 @@ def peakval(pnum,plot_molecules,mol,sstart,ssend):
         window=int(window_size/dt)
         baseline=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
         peakpt=whole_plot_array[imol][pnum][ssend[imol]:].argmax()+ssend[imol]
+
         auc=np.sum(whole_plot_array[imol][pnum][ssend[imol]:endpt]-baseline)*dt
         peakval=whole_plot_array[imol][pnum][max(peakpt-window,0):min(peakpt+window,endpt)].mean()
     return peakval,auc
@@ -116,7 +117,7 @@ def f1(conc,Kd,N,maxval):
 def f2(conc,Kd,N,maxval):
     return maxval*(conc/(conc+Kd))**N
 
-################# This part is new  compare to sig.py and nrdh5_anal.py
+################# This part is new compared to sig.py and nrdh5_anal.py
 #reshape and print
 inputvals=np.zeros((len(parlist[0]),len(parlist[1])))
 outputvals=np.zeros((len(output_molecules),len(parlist[0]),len(parlist[1])))
@@ -164,6 +165,7 @@ for key in fit1.keys():
     print(key,fit1[key])#,'auc:',fit_auc[key])
 for k in fit1.keys():
     print (k,np.round(fit1[k]['2']['N'],2),np.round(fit1[k]['1p4']['N'],2))
+                             
 '''
 if showplot:
     fig,col_inc,scale=pu5.plot_setup(plot_molecules,parlist,params,0,showplot)
