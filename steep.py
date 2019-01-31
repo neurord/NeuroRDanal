@@ -139,22 +139,25 @@ for p1,par1 in enumerate(parlist[0]):
 #  fit outputvalues vs inputvalues to sigmoid
 pyplot.ion()
 pyplot.figure()
-guess={'Epac1cAMP':np.array([4000,2,2000]),'PKAcAMP4':np.array([1000,2,1600]),'PKAc':np.array([500,2,250]),'pAKAR3':np.array([2000,2,2000]),'PP1':np.array([2000,2,2000]), 'D32p34PP1': np.array([2000,2,2000]), 'cAMP':np.array([10000,2,5000])}
+halfmax=1000
+N_guess=2
+max_guess={'Epac1cAMP':2000,'PKAcAMP4':500,'PKAc':250,'pAKAR3':1000,'PP1':1000, 'D32p34PP1': 1000, 'cAMP':5000, 'pPP2A':1500,'pBRaf':200,'pstep':200,'pPDE4':200}
 min_fit=np.array([0,0,0])
 max_fit=np.array([10000,8,5000])
 fit1={}
 fit_auc={}
-colors=['r','b','k','c','m']
+colors=['r','b','k','c','m','g']
 shapes=['*','o','d','s','D','+','x']
 lines=['-', '--', '-.','-', '--', '-.']
 for imol,mol in enumerate(output_molecules):
     fit1[mol]={}; fit_auc[mol]={}
     for p1,par1 in enumerate(parlist[0]):
-        marker=colors[imol]+shapes[p1]
-        line=colors[imol]+lines[p1]
-        popt,pcov=optimize.curve_fit(f1,inputvals[p1,:], outputvals[imol,p1,:],p0=guess[mol],bounds=[min_fit,max_fit])
+        marker=colors[imol%len(colors)]+shapes[p1%len(shapes)]
+        line=colors[imol%len(colors)]+lines[p1%len(lines)]
+        guess=np.array([halfmax,N_guess,max_guess[mol]])
+        popt,pcov=optimize.curve_fit(f1,inputvals[p1,:], outputvals[imol,p1,:],p0=guess,bounds=[min_fit,max_fit])
         fit1[mol][par1]={'Kd':popt[0],'N':popt[1], 'max': popt[2]}
-        popt,pcov=optimize.curve_fit(f1,input_auc[p1,:], output_auc[imol,p1,:],p0=guess[mol])
+        popt,pcov=optimize.curve_fit(f1,input_auc[p1,:], output_auc[imol,p1,:],p0=guess)
         fit_auc[mol][par1]={'Kd':popt[0],'N':popt[1], 'max': popt[2]}
         pyplot.plot(inputvals[p1,:],outputvals[imol,p1,:], marker,label=mol+'-'+par1)
         pars=fit1[mol][par1]
