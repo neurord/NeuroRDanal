@@ -40,7 +40,7 @@ window_size=1  #number of seconds on either side of peak value to average for ma
 spatialaverage=0
 bins=10
 #how much info to print
-showss=0
+showss=1
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
@@ -55,10 +55,10 @@ textsize=10 #for plots.  Make bigger for presentations
 #No need to specify subspecies if uniquely determined by string
 sub_species={"PI": ["Ip3","Ip3degrad","Ip3degPIk","Pip2","PlcCaPip2","PlcCaGqaPip2"],
         "PKA":["PKA", "PKAcAMP2", "PKAcAMP4", "PKAr"]}
-tot_species=["D1R","m4R", "m1R","Gi", "Gs", "Gq", "Plc", "AC5", "AC1", "PI", "PKA","D32","PP2A", "PP2B", "PP1", "Cam", "CK", "Pkc", "Dgl","PDE4", "PDE10", "PDE2"]
-#tot_species=["Calbin", "CaM", "ncx", "pmca", "CaOut"]
-tot_species=[]
-
+sub_species={"activePKAc": ["PKAc","PKAcBRaf","PKAcPP2A","PKAcAKAR3","PKAcstep"], "ppERK":["ppERK","ppERKPDE4"], "badPP1":["PP1pstep","PP1pAKAR3","pPDE4PP1"], "goodPP2A": ["D32p75PP2A","D32p75pPP2A"], "badPP2A": ["PP2ApBRaf","pMEKPP2A","ppMEKPP2A","PP2ApBRaf"]}
+#tot_species=["D1R","m4R", "m1R","Gi", "Gs", "Gq", "Plc", "AC5", "AC1", "PI", "PKA","D32","PP2A", "PP2B", "PP1", "Cam", "CK", "Pkc", "Dgl","PDE4", "PDE10", "PDE2"]
+tot_species=["ppERK", "activePKAc", "badPP1","goodPP2A", "badPP2A"]
+tot_species=["ppERK", "activePKAc", "badPP1", "badPP2A", "PP1"]
 ###################################################
 
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -142,7 +142,9 @@ for fnum,ftuple in enumerate(ftuples):
             whole_space_array=[[] for mol in plot_molecules]
             whole_time_array=[[] for mol in plot_molecules]
         #
-        ss_tot=np.zeros((arraysize,len(tot_species)))
+        ss_tot=[[[] for n in range(arraysize)] for m in range(len(tot_species))]
+        ss_time_array=[[[] for n in range(arraysize)] for m in range(len(tot_species))]
+        ss_tot_zero=np.zeros((arraysize,len(tot_species)))
         slope=np.zeros((arraysize,num_mols))
         peaktime=np.zeros((arraysize,num_mols))
         baseline=np.zeros((arraysize,num_mols))
@@ -334,14 +336,14 @@ for fnum,ftuple in enumerate(ftuples):
         if mol in sub_species.keys():
             mol_set=sub_species[mol]
         else:
-            for subspecie in data['model']['output']['__main__']['species'][:]:
-                if mol in subspecie:
-                    mol_set.append(subspecie)
+            mol_set=[sub for sub in h5utils.decode(data['model']['output']['__main__']['species'][:]) if mol in sub]
+        ss_time=data[trials[0]]['output'][outset]['times'][:]/1000
+        ss_tmp=np.zeros(len(ss_time))
         #second, find molecule index of the sub_species and total them
         for subspecie in mol_set:
             mol_index=h5utils.get_mol_index(data,outset,subspecie)
-            mol_pop=data['trial0']['output'][outset]['population'][0,:,mol_index]
-            ss_tot[fnum,imol]+=mol_pop.sum()/TotVol/mol_per_nM_u3
+            mol_pop=data['trial0']['output'][outset]['population'][:,:,mol_index]
+            ss_tmp+=np.sum(mol_pop,axis=1)/TotVol/mol_per_nM_u3
             if maxvols>1:
                 if dsm_vox>-1:
                     dsm_tot[fnum,imol]+=mol_pop[region_struct_dict[dsm_name]['vox']].sum()/region_struct_dict[dsm_name]['vol']*region_struct_dict[dsm_name]['depth']/mol_per_nM_u3
@@ -351,10 +353,13 @@ for fnum,ftuple in enumerate(ftuples):
                     head_tot[fnum,imol]+=mol_pop[region_dict[spinehead]['vox']].sum()/region_dict[spinehead]['vol']/mol_per_nM_u3
                 else:
                     head_tot[fnum,imol]+=-1
+        ss_tot[imol][fnum]=ss_tmp
+        ss_time_array[imol][fnum]=ss_time
+        ss_tot_zero[fnum,imol]=ss_tmp[0]
         print("Total",mol, end=' ')
         if fnum==0:
             print(mol_set, end=' ')
-        print(ss_tot[fnum,imol],"nM")
+        print(ss_tot_zero[fnum,imol],"nM")
         if maxvols>1:
             print(" or head:",head_tot[fnum,imol],"nM, or dsm:", dsm_tot[fnum,imol], "picoSD")
 #
@@ -436,23 +441,27 @@ if auc_mol and auc_mol in plot_molecules and 'dhpg' in params:
 #then plot the steady state versus parameter value for each molecule
 #Needs to be fixed so that it works with non numeric parameter values
 #is ss the baseline?  Or measuring at some other time point?
-ss=baseline
 if len(params)>1:
-        #print(np.column_stack((parval,ss)))
-        xval=[]
-        for i,pv in enumerate(parval):
-                if len(parlist[0])>len(parlist[1]):
-                        xval.append(pv[0])
-                else:
-                        xval.append(pv[1])
-        print(xval)
-        if showss:
-                pu5.plotss(plot_molecules,xval,ss)
-else:
-    if showss:
-        #also plot the totaled molecule forms
-        if len(tot_species.keys()):
-                pu5.plotss(plot_molecules+tot_species.keys(),parval,np.hstack((ss,ss_tot)))
+    xval=[]
+    for i,pv in enumerate(parval):
+        if len(parlist[0])>len(parlist[1]):
+            xval.append(pv[0])
         else:
-                pu5.plotss(plot_molecules,parval,ss)
-
+            xval.append(pv[1])
+    print(xval)
+else:
+    xval=parval
+if showss:
+    #also plot the totaled molecule forms
+    fig,col_inc,scale=pu5.plot_setup(tot_species,parlist,params,len(stimspine.split()),showplot)
+    fig.canvas.set_window_title(figtitle)
+    pu5.plottrace(tot_species,ss_time_array,ss_tot,parval,fig,col_inc,scale,parlist,textsize,stimspine.split(),showplot)
+    #pu5.plotss(plot_molecules,xval,baseline)
+'''
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "<string>", line 462, in <module>
+  File "/home/avrama/python/NeuroRDanal/plot_h5.py", line 99, in plotss
+    if max(xparval)/min(xparval)>100:
+TypeError: unsupported operand type(s) for /: 'str' and 'str'
+'''
