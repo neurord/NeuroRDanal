@@ -34,16 +34,6 @@ input_molecules=args[2].split()
 output_molecules=args[3].split()
 
 plot_molecules=input_molecules+output_molecules
-################ sort ftuples and parlist according to floating point value
-if [i in '0123456789.' for item in parlist[1] for i in item ]:
-    parlist[1]=[float(item) for item in parlist[1]]
-    if len(params)>1:
-         newftuples=[(tup[0],(tup[1][0],float(tup[1][1]))) for tup in ftuples]
-    else:
-         newftuples=[(tup[0],float(tup[1])) for tup in ftuples]
-    ftuples=sorted(newftuples,key=lambda x:x[1])
-    parlist[1]=sorted(parlist[1],key=lambda x:x)
-    parlist[0]=sorted(parlist[0],key=lambda x:x)
 
 try:
     data.close()
@@ -142,7 +132,7 @@ pyplot.figure()
 halfmax=500
 N_guess=2
 min_fit=np.array([0,0,0])
-max_fit=np.array([10000,8,5000])
+max_fit=np.array([10000,20,5000])
 fit1={}
 fit_auc={}
 colors=['r','b','k','c','m','g']
@@ -157,8 +147,8 @@ for imol,mol in enumerate(output_molecules):
         guess=np.array([halfmax,N_guess,max_guess])
         popt,pcov=optimize.curve_fit(f1,inputvals[p1,:], outputvals[imol,p1,:],p0=guess,bounds=[min_fit,max_fit])
         fit1[mol][par1]={'Kd':popt[0],'N':popt[1], 'max': popt[2]}
-        popt,pcov=optimize.curve_fit(f1,input_auc[p1,:], output_auc[imol,p1,:],p0=guess)
-        fit_auc[mol][par1]={'Kd':popt[0],'N':popt[1], 'max': popt[2]}
+        #popt,pcov=optimize.curve_fit(f1,input_auc[p1,:], output_auc[imol,p1,:],p0=guess)
+        #fit_auc[mol][par1]={'Kd':popt[0],'N':popt[1], 'max': popt[2]}
         pyplot.plot(inputvals[p1,:],outputvals[imol,p1,:], marker,label=mol+'-'+par1)
         pars=fit1[mol][par1]
         pyplot.plot(inputvals[p1,:],f1(inputvals[p1,:],pars['Kd'],pars['N'],pars['max']),line)

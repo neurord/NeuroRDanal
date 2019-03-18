@@ -69,7 +69,7 @@ def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsi
                          map_index=parlist[0].index(parval[pnum][0])
                     color_index=int(parlist[par_index].index(parval[pnum][par_index])*colinc[par_index]*partial_scale)
                     mycolor=colors2D[map_index].__call__(color_index+offset[map_index])
-                    plotlabel=parval[pnum][0]+'-'+parval[pnum][1]
+                    plotlabel=str(parval[pnum][0])+'-'+str(parval[pnum][1])
           #Second, plot each molecule
           for imol in range(len(plotmol)):
                #axis[imol].autoscale(enable=True,tight=False)

@@ -154,10 +154,22 @@ def get_mol_pop(simData, out_location,gridpoints,trials):
 
 def argparse(args):
 
-    def sortorder(ftuple):
-        ans = ftuple[1]
-        #print 'sort', ftuple, '->', ans
-        return ans
+    #def sortorder(ftuple):
+    #    ans = ftuple[1]
+    #    #print 'sort', ftuple, '->', ans
+    #    return ans
+    def sort_param(ftuples,parlist):
+        if [i in '0123456789.' for item in parlist[1] for i in item ]:
+            parlist[1]=[float(item) for item in parlist[1]]
+            if len(params)>1:
+                 newftuples=[(tup[0],(tup[1][0],float(tup[1][1]))) for tup in ftuples]
+            else:
+                 newftuples=[(tup[0],float(tup[1])) for tup in ftuples]
+            ftuples=sorted(newftuples,key=lambda x:x[1])
+            parlist[1]=sorted(parlist[1],key=lambda x:x)
+            #parlist[1]=[str(p) for p in parlist[1]]
+            parlist[0]=sorted(parlist[0],key=lambda x:x)
+        return ftuples,parlist
 
     #1st and 2nd arguements used to construct pattern for reading in multiple files
     pattern=args[0]
@@ -188,6 +200,7 @@ def argparse(args):
     if len(args[1]):
         ftuples,parlist=pu5.file_tuple(fnames,params)
         ftuples = sorted(ftuples, key=lambda x:x[1])
+        ftuples,parlist=sort_param(ftuples,parlist)
     else:
         star=str.find(pattern,'*')
         if star>-1:
