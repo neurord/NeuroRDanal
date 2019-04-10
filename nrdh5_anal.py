@@ -40,7 +40,7 @@ window_size=1  #number of seconds on either side of peak value to average for ma
 spatialaverage=0
 bins=10
 #how much info to print
-showss=1
+showss=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
@@ -53,12 +53,10 @@ textsize=10 #for plots.  Make bigger for presentations
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
-sub_species={"PI": ["Ip3","Ip3degrad","Ip3degPIk","Pip2","PlcCaPip2","PlcCaGqaPip2"],
-        "PKA":["PKA", "PKAcAMP2", "PKAcAMP4", "PKAr"]}
-sub_species={"activePKAc": ["PKAc","PKAcBRaf","PKAcPP2A","PKAcAKAR3","PKAcstep"], "ppERK":["ppERK","ppERKPDE4"], "badPP1":["PP1pstep","PP1pAKAR3","pPDE4PP1"], "goodPP2A": ["D32p75PP2A","D32p75pPP2A"], "badPP2A": ["PP2ApBRaf","pMEKPP2A","ppMEKPP2A","PP2ApBRaf"]}
-#tot_species=["D1R","m4R", "m1R","Gi", "Gs", "Gq", "Plc", "AC5", "AC1", "PI", "PKA","D32","PP2A", "PP2B", "PP1", "Cam", "CK", "Pkc", "Dgl","PDE4", "PDE10", "PDE2"]
-tot_species=["ppERK", "activePKAc", "badPP1","goodPP2A", "badPP2A"]
-tot_species=["ppERK", "activePKAc", "badPP1", "badPP2A", "PP1"]
+sub_species={}
+
+tot_species=[]
+
 ###################################################
 
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -145,12 +143,6 @@ for fnum,ftuple in enumerate(ftuples):
         ss_tot=[[[] for n in range(arraysize)] for m in range(len(tot_species))]
         ss_time_array=[[[] for n in range(arraysize)] for m in range(len(tot_species))]
         ss_tot_zero=np.zeros((arraysize,len(tot_species)))
-        slope=np.zeros((arraysize,num_mols))
-        peaktime=np.zeros((arraysize,num_mols))
-        baseline=np.zeros((arraysize,num_mols))
-        auc=np.zeros((arraysize,num_mols))
-        peakval=np.zeros((arraysize,num_mols))
-        lowval=np.zeros((arraysize,num_mols))
         #
     ######################################
     #Calculate various region averages, such as soma and dend, subm vs cyt, spines
@@ -367,6 +359,14 @@ for fnum,ftuple in enumerate(ftuples):
 #after main processing, extract a few characteristics of molecule trajectory
 #####################################################################
 endpt=int(endtime/dt[0])
+dur_thresh=np.zeros((num_mols))
+slope=np.zeros((arraysize,num_mols))
+peaktime=np.zeros((arraysize,num_mols))
+baseline=np.zeros((arraysize,num_mols))
+auc=np.zeros((arraysize,num_mols))
+peakval=np.zeros((arraysize,num_mols))
+dur_plateau=np.zeros((arraysize,num_mols))
+lowval=np.zeros((arraysize,num_mols))
 for pnum in range(arraysize):
     print(params, parval[pnum])
     print("        molecule  baseline  peakval   ptime    slope      min     ratio")
@@ -382,6 +382,9 @@ for pnum in range(arraysize):
         lowval[pnum,imol]=whole_plot_array[imol][pnum][lowpt-10:lowpt+10].mean()
         begin_slopeval=0.2*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
         end_slopeval=0.8*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
+        dur_thresh_temp=0.6*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
+        if dur_thresh_temp>dur_thresh[imol]:
+            dur_thresh[imol]=dur_thresh_temp
         exceedsthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:]>begin_slopeval)
         begin_slopept=0
         end_slopept=0
@@ -405,6 +408,15 @@ for pnum in range(arraysize):
         else:
             print("   inf")
 #
+for pnum in range(arraysize):
+    for imol,mol in enumerate(plot_molecules):
+        plateau=np.argwhere(whole_plot_array[imol][pnum][ssend[imol]:]>dur_thresh[imol])
+        if len(plateau)==0:
+            dur_plateau[pnum,imol]=0
+        else:
+            start_plateau=np.min(plateau)*dt[imol]
+            end_plateau=np.max(plateau)*dt[imol]
+            dur_plateau[pnum,imol]=end_plateau-start_plateau
 #####################################################################
 #Now plot some of these molcules, either single voxel or overall average if multi-voxel
 #####################################################################
@@ -418,6 +430,8 @@ if showplot:
 if spatialaverage:
     pu5.space_avg(plot_molecules,whole_space_array,whole_time_array,parval,spatial_dict)
 #
+
+
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
 #it will work with other parameters, as long as there are two of them. Just change the auc_mol
 if auc_mol and auc_mol in plot_molecules and 'dhpg' in params:
@@ -465,3 +479,4 @@ Traceback (most recent call last):
     if max(xparval)/min(xparval)>100:
 TypeError: unsupported operand type(s) for /: 'str' and 'str'
 '''
+
