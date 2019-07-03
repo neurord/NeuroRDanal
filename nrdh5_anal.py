@@ -41,6 +41,7 @@ spatialaverage=0
 bins=10
 #how much info to print
 showss=0
+plateau=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
@@ -49,14 +50,15 @@ showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=150 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal
-textsize=10 #for plots.  Make bigger for presentations
+textsize=12 #for plots.  Make bigger for presentations
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
-sub_species={}
+sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 'erk':['ppERK','pERK'], 'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 'RasSyn':['RasSynGap', 'RaspSynGap'], 'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'], 'Ca':['Ca'], 'cAMP':['cAMP'],'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos']}
 
 tot_species=[]
 
+mol_pairs=[]
 ###################################################
 
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -360,6 +362,7 @@ for fnum,ftuple in enumerate(ftuples):
 #####################################################################
 endpt=int(endtime/dt[0])
 dur_thresh=np.zeros((num_mols))
+amplitude=np.zeros((arraysize,num_mols))
 slope=np.zeros((arraysize,num_mols))
 peaktime=np.zeros((arraysize,num_mols))
 baseline=np.zeros((arraysize,num_mols))
@@ -367,6 +370,9 @@ auc=np.zeros((arraysize,num_mols))
 peakval=np.zeros((arraysize,num_mols))
 dur_plateau=np.zeros((arraysize,num_mols))
 lowval=np.zeros((arraysize,num_mols))
+half_max=np.zeros((num_mols,arraysize))
+end_dur=np.zeros((num_mols,arraysize))
+start_dur=np.zeros((num_mols,arraysize))
 for pnum in range(arraysize):
     print(params, parval[pnum])
     print("        molecule  baseline  peakval   ptime    slope      min     ratio")
@@ -380,21 +386,32 @@ for pnum in range(arraysize):
         peakval[pnum,imol]=whole_plot_array[imol][pnum][peakpt-window:peakpt+window].mean()
         lowpt=whole_plot_array[imol][pnum][ssend[imol]:].argmin()+ssend[imol]
         lowval[pnum,imol]=whole_plot_array[imol][pnum][lowpt-10:lowpt+10].mean()
-        begin_slopeval=0.2*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
-        end_slopeval=0.8*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
-        dur_thresh_temp=0.6*(peakval[pnum,imol]-baseline[pnum,imol])+baseline[pnum,imol]
-        if dur_thresh_temp>dur_thresh[imol]:
-            dur_thresh[imol]=dur_thresh_temp
+        amplitude[pnum,imol]=np.round(peakval[pnum,imol]-baseline[pnum,imol],1)
+        begin_slopeval=0.2*(amplitude[pnum][imol])+baseline[pnum,imol] #get the 5% above the max value
+        end_slopeval=0.8*(amplitude[pnum][imol])+baseline[pnum,imol]
         exceedsthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:]>begin_slopeval)
         begin_slopept=0
         end_slopept=0
         found=0
+        # 
+        half_max[imol,pnum]=0.2*(amplitude[pnum][imol])+baseline[pnum,imol]
+        belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol,pnum])
+        if len(belowthresh[0]):
+            start_dur[imol,pnum]=(np.max(belowthresh[0])+ssend[imol])*dt[imol]
+        belowthresh=np.where(whole_plot_array[imol][pnum][peakpt:]<half_max[imol,pnum])
+        if len(belowthresh[0]):
+            end_dur[imol,pnum]=(np.min(belowthresh[0])+peakpt)*dt[imol]
+        #
         if len(exceedsthresh[0]):
             begin_slopept=np.min(exceedsthresh[0])+ssend[imol]
+            begin_durtime=(np.min(exceedsthresh[0])+ssend[imol])
+            dt[imol]
+            end_durtime=(np.max(exceedsthresh[0])+ssend[imol])*dt[imol]
+            #print(np.round(begin_durtime,1),np.round( end_durtime,1))
             found=1
-            exceedsthresh=np.where(whole_plot_array[imol][pnum][begin_slopept:]>end_slopeval)
-            if len(exceedsthresh[0]):
-                end_slopept=np.min(exceedsthresh[0])+begin_slopept
+            exceedsthresh2=np.where(whole_plot_array[imol][pnum][begin_slopept:]>end_slopeval)
+            if len(exceedsthresh2[0]):
+                end_slopept=np.min(exceedsthresh2[0])+begin_slopept
             else:
                 found=0
         if found and len(whole_plot_array[imol][pnum][begin_slopept:end_slopept])>1:
@@ -407,16 +424,9 @@ for pnum in range(arraysize):
             print("%8.2f" %(peakval[pnum,imol]/baseline[pnum,imol]))
         else:
             print("   inf")
-#
-for pnum in range(arraysize):
-    for imol,mol in enumerate(plot_molecules):
-        plateau=np.argwhere(whole_plot_array[imol][pnum][ssend[imol]:]>dur_thresh[imol])
-        if len(plateau)==0:
-            dur_plateau[pnum,imol]=0
-        else:
-            start_plateau=np.min(plateau)*dt[imol]
-            end_plateau=np.max(plateau)*dt[imol]
-            dur_plateau[pnum,imol]=end_plateau-start_plateau
+#extract prolong/plateau data 
+duration=end_dur-start_dur
+
 #####################################################################
 #Now plot some of these molcules, either single voxel or overall average if multi-voxel
 #####################################################################
@@ -429,7 +439,21 @@ if showplot:
     #
 if spatialaverage:
     pu5.space_avg(plot_molecules,whole_space_array,whole_time_array,parval,spatial_dict)
-#
+#fig.suptitle('', fontweight='bold',fontsize=40)
+#pyplot.xlabel('Time(sec)', fontweight='bold')
+#pyplot.ylabel('ppERK (nM)', fontweight='bold')
+
+#plot plateau
+if len(parlist[0])>len(parlist[1]):
+    par_index=0
+else:
+    par_index=1
+for imol,mol in enumerate(plot_molecules):
+    pyplot.figure(figtitle)
+    pyplot.plot(parlist[par_index],duration[imol], label=mol)
+    pyplot.xlabel('Inj_dur')
+    pyplot.ylabel('duration'+'_'+ mol)
+pyplot.legend()
 
 
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
@@ -471,6 +495,32 @@ if showss:
     fig.canvas.set_window_title(figtitle)
     pu5.plottrace(tot_species,ss_time_array,ss_tot,parval,fig,col_inc,scale,parlist,textsize,stimspine.split(),showplot)
     #pu5.plotss(plot_molecules,xval,baseline)
+
+
+
+plot_start=int(1000/dt[0])
+for pair in mol_pairs:
+    do_plot=True
+    if pair[0] in plot_molecules:
+        molY=plot_molecules.index(pair[0])
+    else:
+        do_plot=False
+    if pair[1] in plot_molecules:
+        molX=plot_molecules.index(pair[1])
+    else:
+         do_plot=False
+    if do_plot:
+        pyplot.figure()
+        for pnum in range(arraysize):
+            pyplot.plot(whole_plot_array[molX][pnum][plot_start:],whole_plot_array[molY][pnum][plot_start:], label=xval[pnum], marker='.',linestyle='None')
+        pyplot.legend()
+        pyplot.xlabel(pair[1])
+        pyplot.ylabel(pair[0])
+    else:
+        print('***************Molecule not in ARGS****************', pair)
+    
+    
+    
 '''
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
