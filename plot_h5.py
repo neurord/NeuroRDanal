@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 from matplotlib import pyplot
 
-legtextsize=8
+legtextsize=15
      
 colors=pyplot.get_cmap('viridis')
 #colors=pyplot.get_cmap('plasma')
@@ -84,9 +84,9 @@ def plottrace(plotmol,timearray,plotarray,parval,fig,colinc,scale,parlist,textsi
                                          label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
                else:
                     axis[imol].plot(timearray[imol][pnum][0:maxpoint],plotarray[imol][pnum][0:maxpoint],label=plotlabel,color=mycolor)
-               axis[imol].set_ylabel(plotmol[imol]+' (nM)',fontsize=textsize)
+               axis[imol].set_ylabel(plotmol[imol]+' (nM)',fontsize=textsize, fontweight='bold')
                axis[imol].tick_params(labelsize=textsize)
-          axis[imol].set_xlabel('Time (sec)',fontsize=textsize)
+          axis[imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
      axis[imol].legend(fontsize=legtextsize, loc='best')
      fig.canvas.draw()
      return
@@ -98,7 +98,7 @@ def plotss(plot_mol,xparval,ss):
         axes[imol].set_ylabel('nM')
         if max(xparval)/min(xparval)>100:
             axes[imol].set_xscale("log")
-        axes[imol].legend(fontsize=legtextsize, loc='best')
+        axes[imol].legend(fontsize=legtextsize, loc='best',  fontweight='bold')
     fig.canvas.draw()
     return
 

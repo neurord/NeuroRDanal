@@ -41,24 +41,30 @@ spatialaverage=0
 bins=10
 #how much info to print
 showss=0
-plateau=0
+showplateau=1
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
+outputavg2=1
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=150 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal
-textsize=12 #for plots.  Make bigger for presentations
+textsize=20 #for plots.  Make bigger for presentations
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
-sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 'erk':['ppERK','pERK'], 'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 'RasSyn':['RasSynGap', 'RaspSynGap'], 'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 'Ca':['Ca'],'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos']}
+sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 'erk':['ppERK','pERK'], 'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 'RasSyn':['RasSynGap', 'RaspSynGap'], 'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 'Ca':['Ca'],'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'], 'free_Syn':['SynGap', 'pSynGap']}
 
 tot_species=[]
 
-mol_pairs=[]
+#molecules that we want to check if there is any correlation by plotting them together 
+mol_pairs=[]#[['ppERK','Ca'], ['ppERK','CKpCamCa4'],['cAMP','ppERK']]
+#starting time for pairing 
+plot_start_time=10
+#ending time for paring
+plot_end_time=300
 ###################################################
 
 Avogadro=6.023e14 #to convert to nanoMoles
@@ -89,6 +95,7 @@ whole_space_array=[]
 whole_time_array=[]
 for fnum,ftuple in enumerate(ftuples):
     data,maxvols,TotVol,trials,seeds,arraysize,p=h5utils.initialize(ftuple,numfiles,parval)
+    print (ftuple, 'volume',TotVol)
     if len(p):
         params=p[0]
         parval=p[1]
@@ -444,6 +451,7 @@ if spatialaverage:
 #pyplot.ylabel('ppERK (nM)', fontweight='bold')
 
 #plot plateau
+
 if len(parlist[0])>len(parlist[1]):
     par_index=0
 else:
@@ -455,6 +463,12 @@ for imol,mol in enumerate(plot_molecules):
     pyplot.ylabel('duration'+'_'+ mol)
 pyplot.legend()
 
+for imol,mol in enumerate(plot_molecules):
+    pyplot.figure(figtitle)
+    pyplot.plot(parlist[par_index],amplitude[imol:], label=mol)
+    pyplot.xlabel('Inj_dur')
+    pyplot.ylabel('Amplitude'+'_'+ mol)
+pyplot.legend()
 
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
 #it will work with other parameters, as long as there are two of them. Just change the auc_mol
@@ -498,8 +512,10 @@ if showss:
 
 
 
-plot_start=int(1000/dt[0])
+plot_start=int(plot_start_time/dt[0])
+plot_end=int(plot_end_time/dt[0])
 for pair in mol_pairs:
+    print(pair)
     do_plot=True
     if pair[0] in plot_molecules:
         molY=plot_molecules.index(pair[0])
@@ -511,22 +527,27 @@ for pair in mol_pairs:
          do_plot=False
     if do_plot:
         pyplot.figure()
+        pyplot.title('---'.join(pair))
         for pnum in range(arraysize):
-            pyplot.plot(whole_plot_array[molX][pnum][plot_start:],whole_plot_array[molY][pnum][plot_start:], label=xval[pnum], marker='.',linestyle='None')
+            X=whole_plot_array[molX][pnum]
+            Y=whole_plot_array[molY][pnum]
+            time_vectorY=np.linspace(0,whole_time_array[0][0][-1],len(Y))
+            time_vectorX=np.linspace(0,whole_time_array[0][0][-1],len(X))
+            # check if molX & moly same length
+            if len(X)==len(Y):
+                pyplot.plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
+            if len(X)>len(Y):
+                molX_interp=np.interp(time_vectorY,time_vectorX,X)
+                pyplot.plot(molX_interp[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
+            if len(Y)>len(X):
+                molY_interp=np.interp(time_vectorX,time_vectorY,Y)
+                pyplot.plot(X[plot_start:plot_end],molY_interp[plot_start:plot_end], label=xval[pnum], linestyle='--')
+                
+           
+            
         pyplot.legend()
         pyplot.xlabel(pair[1])
         pyplot.ylabel(pair[0])
     else:
-        print('***************Molecule not in ARGS****************', pair)
+        print('*********************Molecule not in ARGS****************', pair)
     
-    
-    
-'''
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-  File "<string>", line 462, in <module>
-  File "/home/avrama/python/NeuroRDanal/plot_h5.py", line 99, in plotss
-    if max(xparval)/min(xparval)>100:
-TypeError: unsupported operand type(s) for /: 'str' and 'str'
-'''
-
