@@ -158,27 +158,37 @@ def argparse(args):
     #    ans = ftuple[1]
     #    #print 'sort', ftuple, '->', ans
     #    return ans
-    def sort_paramNum(ftuples,parlist,par):
-        print('**********************1:',parlist[1],parlist[0], 'sort_paraNum')
-        if np.all([i in '0123456789.' for item in parlist[1] for i in item ]):
-            parlist[1]=[float(item) for item in parlist[1]]
-            if len(par)>1:
+    def check_for_float(parlist):
+        testset=[i for item in parlist for i in item ]
+        if np.all([i in '0123456789.' for i in testset]) and len(testset):
+            parlist=[float(item) for item in parlist]
+            parlist=sorted(parlist,key=lambda x:x)
+            par_is_float=True
+        else:
+            par_is_float=False
+        return parlist,par_is_float
+        
+    def sort_paramNum(ftuples,parlist):
+        parlist[0],par0_is_float=check_for_float(parlist[0])
+        if len(parlist[1])>0:
+            parlist[1],par1_is_float=check_for_float(parlist[1])
+            if par1_is_float and not par0_is_float:
                 newftuples=[(tup[0],(tup[1][0],float(tup[1][1]))) for tup in ftuples]
-            else:
-                newftuples=[(tup[0],float(tup[1])) for tup in ftuples]
+            if par0_is_float and not par1_is_float:  
+                newftuples=[(tup[0],(float(tup[1][0]),tup[1][1])) for tup in ftuples]
+            if par0_is_float and par1_is_float: 
+                newftuples=[(tup[0],(float(tup[1][0]),float(tup[1][1]))) for tup in ftuples]
+        elif par0_is_float:
+            newftuples=[(tup[0],float(tup[1])) for tup in ftuples]
+            par1_is_float=False
+        else:
+            par1_is_float=False
+        if par0_is_float or par1_is_float:
             ftuples=sorted(newftuples,key=lambda x:x[1])
-        parlist[1]=sorted(parlist[1],key=lambda x:x)
-        parlist[0]=sorted(parlist[0],key=lambda x:x)
         return ftuples,parlist
 
     #sort par
-parfloat=[0 for p in params]
-for i in range (len(par)):
-    if np.all([i in '0123456789.' for item in parlist[i]for i in item ]):
-        parlist[i]=[float(item) for item in parlist[i]]
-        parfloat[i]=True
-    if len(par)==1 and parfloat[i]=True:
-        newftuples=[(tup[0],float(tup[1])) for tup in ftuples]
+
     #1st and 2nd arguements used to construct pattern for reading in multiple files
     pattern=args[0]
     if len(args[1]):
@@ -205,9 +215,8 @@ for i in range (len(par)):
     if len(args[1]):
         ftuples,parlist=pu5.file_tuple(fnames,params)
         ftuples = sorted(ftuples, key=lambda x:x[1])
-        print('**********************2:',parlist[1],parlist[0], ftuples, par)
-        if len(parlist[1]):
-            ftuples,parlist=sort_paramNum(ftuples,parlist,par)
+        if len(parlist[1]) or len(parlist[0]):
+            ftuples,parlist=sort_paramNum(ftuples,parlist)
     else:
         star=str.find(pattern,'*')
         if star>-1:
@@ -217,6 +226,8 @@ for i in range (len(par)):
         else:
             ftuples=[(fnames[0],'1')]
     return ftuples,parlist,params
+
+
 
 def subvol_list(structType,model):
     #use dictionaries to store voxels corresponding to regions, region_classes (e.g. head) or regions/structures
@@ -392,4 +403,7 @@ def sig_outfile_single(time_thresh,time,samp_times,pstart,pend,fname_roots,fname
             #
             sign_file(col_num,trials,fname_roots,all_sig_array,samplepoints,time,outfname)
     return
-
+'''
+    for par in params
+    
+'''
