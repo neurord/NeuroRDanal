@@ -46,11 +46,11 @@ show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-outputavg2=1
+outputauc=1
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
-endtime=150 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal
+endtime=-1 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal, set to -1 for entire duration 
 textsize=20 #for plots.  Make bigger for presentations
 
 #Example of how to total some molecule forms; turn off with tot_species={}
@@ -216,9 +216,9 @@ for fnum,ftuple in enumerate(ftuples):
             if outputavg==1:
                 outfname=ftuple[0][0:-3]+'_'+molecule+'_avg.txt'
                 if len(params)==1:
-                    param_name=params[0]+parval[fnum]
+                    param_name=params[0]+str(parval[fnum])
                 if len(params)==2:
-                    param_name=params[0]+parval[fnum][0]+params[1]+parval[fnum][1]
+                    param_name=params[0]+str(parval[fnum][0])+params[1]+str(parval[fnum][1])
                 print('output file:', outfname,  ' param_name:', param_name)
                 newheader, newheaderstd=h5utils.new_head(header,param_name)
                 if len(trials)>1:
@@ -241,6 +241,8 @@ for fnum,ftuple in enumerate(ftuples):
                 f.write(wholeheader)
                 np.savetxt(f, outdata, fmt='%.4f', delimiter=' ')
                 f.close()
+
+
             if print_head_stats:
                 print(molecule.rjust(14), end=' ')
                 if head_index>-1:
@@ -298,11 +300,11 @@ for fnum,ftuple in enumerate(ftuples):
             if len(params)==1:
                 param_name=params[0]+parval[fnum]
             if len(params)==2:
-                param_name=params[0]+parval[fnum][0]+params[1]+parval[fnum][1]
-            print('output file:', outfname,  ' param_name:', param_name)
+                param_name=params[0]+str(parval[fnum][0])+params[1]+str(parval[fnum][1])
+            print('output file:', outfname,  ' param_name:', param_name, np.shape(time_array[-1]),np.shape(plot_array[-1]))
             f=open(outfname, 'w')
             f.write('time    '+os.path.basename(ftuple[0]).split('.')[0]+'_'+mol+'\n')
-            np.savetxt(f, np.row_stack((time_array,plot_array)).T, fmt='%.4f', delimiter=' ')
+            np.savetxt(f, np.row_stack((time_array[-1],plot_array[-1])).T, fmt='%.4f', delimiter=' ')
             f.close()
     ######################################
     #Whether 1 voxel or multi-voxel, create plotting array of means for all molecules, all files, all trials
@@ -367,7 +369,7 @@ for fnum,ftuple in enumerate(ftuples):
 #####################################################################
 #after main processing, extract a few characteristics of molecule trajectory
 #####################################################################
-endpt=int(endtime/dt[0])
+
 dur_thresh=np.zeros((num_mols))
 amplitude=np.zeros((arraysize,num_mols))
 slope=np.zeros((arraysize,num_mols))
@@ -385,6 +387,10 @@ for pnum in range(arraysize):
     print("        molecule  baseline  peakval   ptime    slope      min     ratio")
     for imol,mol in enumerate(plot_molecules):
       if out_location[mol]!=-1:
+        if endtime==-1:
+              endpt=len(whole_plot_array[imol][pnum])
+        else:
+              endpt=int(endtime/dt[imol])
         window=int(window_size/dt[imol])
         baseline[pnum,imol]=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
         peakpt=whole_plot_array[imol][pnum][ssend[imol]:].argmax()+ssend[imol]
@@ -434,6 +440,14 @@ for pnum in range(arraysize):
 #extract prolong/plateau data 
 duration=end_dur-start_dur
 
+if outputauc==1:            
+    outfname=args[0].split('_')[-1]+'-'+args[1]+'_auc.txt'
+    header='           '.join(plot_molecules)+'\n'
+    f=open(outfname, 'w')
+    f.write(header)
+    np.savetxt(f, auc, fmt='%.4f', delimiter=' ')
+    f.close()
+
 #####################################################################
 #Now plot some of these molcules, either single voxel or overall average if multi-voxel
 #####################################################################
@@ -458,17 +472,11 @@ else:
     par_index=1
 for imol,mol in enumerate(plot_molecules):
     pyplot.figure(figtitle)
-    pyplot.plot(parlist[par_index],duration[imol], label=mol)
+    pyplot.plot(parlist,duration[imol], label=mol)
     pyplot.xlabel('Inj_dur')
     pyplot.ylabel('duration'+'_'+ mol)
 pyplot.legend()
 
-for imol,mol in enumerate(plot_molecules):
-    pyplot.figure(figtitle)
-    pyplot.plot(parlist[par_index],amplitude[imol:], label=mol)
-    pyplot.xlabel('Inj_dur')
-    pyplot.ylabel('Amplitude'+'_'+ mol)
-pyplot.legend()
 
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
 #it will work with other parameters, as long as there are two of them. Just change the auc_mol
@@ -551,3 +559,5 @@ for pair in mol_pairs:
     else:
         print('*********************Molecule not in ARGS****************', pair)
     
+    #####################################################################
+
