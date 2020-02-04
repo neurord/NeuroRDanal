@@ -41,12 +41,13 @@ spatialaverage=0
 bins=10
 #how much info to print
 showss=0
-showplateau=1
+showplateau=0
+showpairs=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-outputauc=1
+outputauc=0
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
@@ -60,7 +61,7 @@ sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras'
 tot_species=[]
 
 #molecules that we want to check if there is any correlation by plotting them together 
-mol_pairs=[]#[['ppERK','Ca'], ['ppERK','CKpCamCa4'],['cAMP','ppERK']]
+mol_pairs=[['ppERK','Ca'], ['ppERK','CKpCamCa4'],['cAMP','ppERK']]
 #starting time for pairing 
 plot_start_time=10
 #ending time for paring
@@ -432,7 +433,7 @@ for pnum in range(arraysize):
         else:
                 slope[pnum,imol]=-9999
         print(mol.rjust(16),"%8.2f" % baseline[pnum,imol],"%8.2f" %peakval[pnum,imol], end=' ')
-        print("%8.2f" % peaktime[pnum,imol], "%8.3f" %slope[pnum,imol], "%8.2f" %lowval[pnum,imol], end=' ')
+        print("%8.2f" % peaktime[pnum,imol], "%8.3f" %slope[pnum,imol], "%8.2f" %lowval[pnum,imol], end=' ') 
         if baseline[pnum,imol]>1e-5:
             print("%8.2f" %(peakval[pnum,imol]/baseline[pnum,imol]))
         else:
@@ -441,13 +442,22 @@ for pnum in range(arraysize):
 duration=end_dur-start_dur
 
 if outputauc==1:            
-    outfname=args[0].split('_')[-1]+'-'+args[1]+'_auc.txt'
-    header='           '.join(plot_molecules)+'\n'
+    outfname=args[0]+'-'+'analysis'+'-'+args[1]+'.txt'#not adding analysis or aucpeak at the end because we decided to end with the arg
+    header='parval  ' #added speced at the end to have spac in between 
+    header+='           '.join(plot_molecules)+'_'+'auc  '
+    header+='           '.join(plot_molecules)+'_'+'peak'+'\n'
     f=open(outfname, 'w')
     f.write(header)
-    np.savetxt(f, auc, fmt='%.4f', delimiter=' ')
+    np.savetxt(f,np.column_stack((parval,np.round(auc,3),np.round(peakval,3))),fmt='%1s', delimiter='    , ')#changed from .4f to 1s and it worked
+    f.close() 
+'''
+#if outputavg_tog==1:
+    outfname=ftuple[0][0:-3]+'_'+mol+'_avg.txt'
+    f=open(outfname, 'w')
+    f.write('time    '+os.path.basename(ftuple[0]).split('.')[0]+'_'+mol+'\n')
+    np.savetxt(f, np.row_stack((time_array[-1],plot_array[-1])).T, fmt='%.4f', delimiter=' ')
     f.close()
-
+'''
 #####################################################################
 #Now plot some of these molcules, either single voxel or overall average if multi-voxel
 #####################################################################
@@ -465,17 +475,20 @@ if spatialaverage:
 #pyplot.ylabel('ppERK (nM)', fontweight='bold')
 
 #plot plateau
+def plateau ():
+    if len(parlist[0])>len(parlist[1]):
+        par_index=0
+    else:
+        par_index=1
+    for imol,mol in enumerate(plot_molecules):
+        pyplot.figure(figtitle)
+        pyplot.plot(parlist,duration[imol], label=mol)
+        pyplot.xlabel('Inj_dur')
+        pyplot.ylabel('duration'+'_'+ mol)
+    pyplot.legend()
 
-if len(parlist[0])>len(parlist[1]):
-    par_index=0
-else:
-    par_index=1
-for imol,mol in enumerate(plot_molecules):
-    pyplot.figure(figtitle)
-    pyplot.plot(parlist,duration[imol], label=mol)
-    pyplot.xlabel('Inj_dur')
-    pyplot.ylabel('duration'+'_'+ mol)
-pyplot.legend()
+if showplateau==1:
+    plateau()
 
 
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
@@ -520,44 +533,45 @@ if showss:
 
 
 
-plot_start=int(plot_start_time/dt[0])
-plot_end=int(plot_end_time/dt[0])
-for pair in mol_pairs:
-    print(pair)
-    do_plot=True
-    if pair[0] in plot_molecules:
-        molY=plot_molecules.index(pair[0])
-    else:
-        do_plot=False
-    if pair[1] in plot_molecules:
-        molX=plot_molecules.index(pair[1])
-    else:
-         do_plot=False
-    if do_plot:
-        pyplot.figure()
-        pyplot.title('---'.join(pair))
-        for pnum in range(arraysize):
-            X=whole_plot_array[molX][pnum]
-            Y=whole_plot_array[molY][pnum]
-            time_vectorY=np.linspace(0,whole_time_array[0][0][-1],len(Y))
-            time_vectorX=np.linspace(0,whole_time_array[0][0][-1],len(X))
-            # check if molX & moly same length
-            if len(X)==len(Y):
-                pyplot.plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
-            if len(X)>len(Y):
-                molX_interp=np.interp(time_vectorY,time_vectorX,X)
-                pyplot.plot(molX_interp[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
-            if len(Y)>len(X):
-                molY_interp=np.interp(time_vectorX,time_vectorY,Y)
-                pyplot.plot(X[plot_start:plot_end],molY_interp[plot_start:plot_end], label=xval[pnum], linestyle='--')
-                
-           
-            
-        pyplot.legend()
-        pyplot.xlabel(pair[1])
-        pyplot.ylabel(pair[0])
-    else:
-        print('*********************Molecule not in ARGS****************', pair)
+#plot pairs
+def pairs ():
+    plot_start=int(plot_start_time/dt[0])
+    plot_end=int(plot_end_time/dt[0])
+    for pair in mol_pairs:
+        print(pair)
+        do_plot=True
+        if pair[0] in plot_molecules:
+            molY=plot_molecules.index(pair[0])
+        else:
+            do_plot=False
+        if pair[1] in plot_molecules:
+            molX=plot_molecules.index(pair[1])
+        else:
+             do_plot=False
+        if do_plot:
+            pyplot.figure()
+            pyplot.title('---'.join(pair))
+            for pnum in range(arraysize):
+                X=whole_plot_array[molX][pnum]
+                Y=whole_plot_array[molY][pnum]
+                time_vectorY=np.linspace(0,whole_time_array[0][0][-1],len(Y))
+                time_vectorX=np.linspace(0,whole_time_array[0][0][-1],len(X))
+                # check if molX & moly same length
+                if len(X)==len(Y):
+                    pyplot.plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
+                if len(X)>len(Y):
+                    molX_interp=np.interp(time_vectorY,time_vectorX,X)
+                    pyplot.plot(molX_interp[plot_start:plot_end],Y[plot_start:plot_end], label=xval[pnum], linestyle='--')
+                if len(Y)>len(X):
+                    molY_interp=np.interp(time_vectorX,time_vectorY,Y)
+                    pyplot.plot(X[plot_start:plot_end],molY_interp[plot_start:plot_end], label=xval[pnum], linestyle='--')
+            pyplot.legend()
+            pyplot.xlabel(pair[1])
+            pyplot.ylabel(pair[0])
+        else:
+            print('*********************Molecule not in ARGS****************', pair)
+if showpairs==1:
+    pairs()
     
     #####################################################################
 
