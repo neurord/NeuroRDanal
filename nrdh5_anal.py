@@ -51,8 +51,9 @@ outputauc=0
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
-endtime=-1 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal, set to -1 for entire duration 
+endtime=2000 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal, set to -1 for entire duration 
 textsize=20 #for plots.  Make bigger for presentations
+basestarttime=2300
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
@@ -145,8 +146,9 @@ for fnum,ftuple in enumerate(ftuples):
         else:
             plot_molecules=molecules
         num_mols=len(plot_molecules)
+        auc_array=[[[] for ii in ftuples] for jj in plot_molecules]
         if numfiles>1:
-            whole_plot_array=[[] for mol in plot_molecules]
+            whole_plot_array=[[] for mol in plot_molecules] 
             whole_space_array=[[] for mol in plot_molecules]
             whole_time_array=[[] for mol in plot_molecules]
         #
@@ -224,7 +226,7 @@ for fnum,ftuple in enumerate(ftuples):
                 newheader, newheaderstd=h5utils.new_head(header,param_name)
                 if len(trials)>1:
                     nonspine_out=np.column_stack((RegMeanStd['mean'],RegStructMeanStd['mean'],np.mean(OverallMean,axis=0),RegMeanStd['std'],RegStructMeanStd['std'],np.std(OverallMean,axis=0)))
-                else:
+                else: 
                     newheaderstd=''
                     nonspine_out=np.column_stack((RegionMeans[0,:,:],RegionStructMeans[0,:,:],OverallMean[0,:]))
                 if len(spinelist)>1:
@@ -274,7 +276,7 @@ for fnum,ftuple in enumerate(ftuples):
         #might want to create output files with mean and stdev
         ######################################
         voxel=0
-        for mol in plot_molecules:
+        for i,mol in enumerate (plot_molecules):
           if out_location[mol]!=-1:
             outset = list(out_location[mol]['location'].keys())[0]
             imol=out_location[mol]['location'][outset]['mol_index']
@@ -282,7 +284,8 @@ for fnum,ftuple in enumerate(ftuples):
             time_array.append(data[trials[0]]['output'][outset]['times'][:]/1000)
             #generate output files for these cases
             for trialnum,trial in enumerate(trials):
-                tempConc[trialnum]=data[trial]['output'][outset]['population'][:,voxel,imol]/TotVol/mol_per_nM_u3
+               tempConc[trialnum]=data[trial]['output'][outset]['population'][:,voxel,imol]/TotVol/mol_per_nM_u3
+            auc_array[i][fnum]=tempConc
             if numfiles>1:
                  plot_array.append(np.mean(tempConc,axis=0))
                  #plot_array dimensions=numfiles x number of molecules x sample times
@@ -299,7 +302,7 @@ for fnum,ftuple in enumerate(ftuples):
             #This output is needed to extract txt file from h5 file for plotting
             outfname=ftuple[0][0:-3]+'_'+mol+'_avg.txt'
             if len(params)==1:
-                param_name=params[0]+parval[fnum]
+                param_name=params[0]+str(parval[fnum])
             if len(params)==2:
                 param_name=params[0]+str(parval[fnum][0])+params[1]+str(parval[fnum][1])
             print('output file:', outfname,  ' param_name:', param_name, np.shape(time_array[-1]),np.shape(plot_array[-1]))
@@ -325,8 +328,16 @@ for fnum,ftuple in enumerate(ftuples):
         whole_time_array=[[time_array[imol] for trial in trials] for imol in range(len(plot_molecules))]
     if 'event_statistics' in data['trial0']['output'].keys() and show_inject:
         print ("seeds", seeds," injection stats:")
-        for inject_sp,inject_num in zip(data['model']['event_statistics'][:],data['trial0']['output']['event_statistics'][0]):
-            print (inject_sp.split()[-1].rjust(20),inject_num[:])
+        if len(trials)>1:
+            for each in trials:
+                each_data=data[each]['output']['event_statistics'][0]
+                for inject_sp,inject_num in zip(data['model']['event_statistics'][:],each_data):
+                    #trials_avg=np.zeros((len(trials),np.shape(inject_sp.split())))
+                    #trials_avg=np.mean(each_data[:],axis=0)
+                    print (inject_sp.split()[-1].rjust(20),inject_num[:])#,trials_avg)
+        else:
+            for inject_sp,inject_num in zip(data['model']['event_statistics'][:],data['trial0']['output']['event_statistics'][0]):
+                print (inject_sp.split()[-1].rjust(20),inject_num[:])
     #
     ###################################################
     #   in both cases (single voxel and multi-voxel):
@@ -372,14 +383,23 @@ for fnum,ftuple in enumerate(ftuples):
 #####################################################################
 
 dur_thresh=np.zeros((num_mols))
-amplitude=np.zeros((arraysize,num_mols))
-slope=np.zeros((arraysize,num_mols))
-peaktime=np.zeros((arraysize,num_mols))
-baseline=np.zeros((arraysize,num_mols))
-auc=np.zeros((arraysize,num_mols))
-peakval=np.zeros((arraysize,num_mols))
-dur_plateau=np.zeros((arraysize,num_mols))
-lowval=np.zeros((arraysize,num_mols))
+amplitude=np.zeros((num_mols,arraysize))
+slope=np.zeros((num_mols,arraysize))
+peaktime=np.zeros((num_mols,arraysize))
+baseline=np.zeros((num_mols,arraysize))
+baseline_auc=np.zeros((num_mols,arraysize,len(trials)))
+auc=np.zeros((num_mols,arraysize,len(trials)))
+auc_mean=np.zeros((num_mols,arraysize))
+auc_std=np.zeros((num_mols,arraysize))
+peak_mean=np.zeros((num_mols,arraysize,len(trials)))
+peak_std=np.zeros((num_mols,arraysize))
+end_auc=np.zeros(len(trials))
+tempauc=np.zeros(len(trials))
+baseline_std=np.zeros((num_mols,arraysize,len(trials)))
+auc_thresh=np.zeros((num_mols,arraysize,len(trials)))
+peakval=np.zeros((num_mols,arraysize))
+dur_plateau=np.zeros((num_mols,arraysize))
+lowval=np.zeros((num_mols,arraysize))
 half_max=np.zeros((num_mols,arraysize))
 end_dur=np.zeros((num_mols,arraysize))
 start_dur=np.zeros((num_mols,arraysize))
@@ -393,28 +413,48 @@ for pnum in range(arraysize):
         else:
               endpt=int(endtime/dt[imol])
         window=int(window_size/dt[imol])
-        baseline[pnum,imol]=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
+        baseline[imol,pnum]=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
         peakpt=whole_plot_array[imol][pnum][ssend[imol]:].argmax()+ssend[imol]
-        auc[pnum,imol]=np.sum(whole_plot_array[imol][pnum][ssend[imol]:endpt]-baseline[pnum,imol])*dt[imol]
-        peaktime[pnum,imol]=peakpt*dt[imol]
-        peakval[pnum,imol]=whole_plot_array[imol][pnum][peakpt-window:peakpt+window].mean()
+        peaktime[imol,pnum]=peakpt*dt[imol]
+        peakval[imol,pnum]=whole_plot_array[imol][pnum][peakpt-window:peakpt+window].mean()
         lowpt=whole_plot_array[imol][pnum][ssend[imol]:].argmin()+ssend[imol]
-        lowval[pnum,imol]=whole_plot_array[imol][pnum][lowpt-10:lowpt+10].mean()
-        amplitude[pnum,imol]=np.round(peakval[pnum,imol]-baseline[pnum,imol],1)
-        begin_slopeval=0.2*(amplitude[pnum][imol])+baseline[pnum,imol] #get the 5% above the max value
-        end_slopeval=0.8*(amplitude[pnum][imol])+baseline[pnum,imol]
+        lowval[imol,pnum]=whole_plot_array[imol][pnum][lowpt-10:lowpt+10].mean()
+        amplitude[imol,pnum]=np.round(peakval[imol][pnum]-baseline[imol][pnum],1)
+        begin_slopeval=0.2*(amplitude[imol][pnum])+baseline[imol][pnum] #get the 5% above the max value
+        end_slopeval=0.8*(amplitude[imol][pnum])+baseline[imol][pnum]
         exceedsthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:]>begin_slopeval)
         begin_slopept=0
         end_slopept=0
         found=0
-        # 
-        half_max[imol,pnum]=0.2*(amplitude[pnum][imol])+baseline[pnum,imol]
-        belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol,pnum])
+        #
+        
+        for trialnum,trial in enumerate(trials):
+            basestart=int(basestarttime/dt[imol])
+            baseline_auc[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].mean()
+            baseline_std[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].std()
+            auc_thresh[imol,pnum,trialnum]=baseline_auc[imol][pnum][trialnum]+0.2*baseline_std[imol][pnum][trialnum]
+            peakpt_auc=auc_array[imol][pnum][trialnum][ssend[imol]:].argmax()+ssend[imol]
+            peak_mean[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][peakpt_auc-window:peakpt_auc+window].mean()
+            peak_std[imol,pnum]=peak_mean[imol,pnum].std()
+            belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_auc:]<auc_thresh[imol][pnum][trialnum])[0]
+            if len(belowthresh_auc):
+                end_auc[trialnum]=np.min(belowthresh_auc+peakpt_auc)
+            else:
+                print ('********* ERK is not returning to basal, raise your threshold by 2**********')
+            tempauc[trialnum]=np.sum(auc_array[imol][pnum][trialnum][ssend[imol]:int(end_auc[trialnum])]-baseline_auc[imol][pnum][trialnum])*dt[imol]
+        auc[imol,pnum]=tempauc
+        auc_mean[imol,pnum]=tempauc.mean()
+        auc_std[imol,pnum]=tempauc.std()
+        
+        #
+        half_max[imol,pnum]=0.2*(amplitude[imol][pnum])+baseline[imol][pnum]
+        belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol][pnum])
         if len(belowthresh[0]):
             start_dur[imol,pnum]=(np.max(belowthresh[0])+ssend[imol])*dt[imol]
         belowthresh=np.where(whole_plot_array[imol][pnum][peakpt:]<half_max[imol,pnum])
         if len(belowthresh[0]):
             end_dur[imol,pnum]=(np.min(belowthresh[0])+peakpt)*dt[imol]
+           
         #
         if len(exceedsthresh[0]):
             begin_slopept=np.min(exceedsthresh[0])+ssend[imol]
@@ -429,35 +469,39 @@ for pnum in range(arraysize):
             else:
                 found=0
         if found and len(whole_plot_array[imol][pnum][begin_slopept:end_slopept])>1:
-                slope[pnum,imol]=(peakval[pnum,imol]-baseline[pnum,imol])/((end_slopept-begin_slopept)*dt[imol])
+                slope[imol,pnum]=(peakval[imol,pnum]-baseline[imol][pnum])/((end_slopept-begin_slopept)*dt[imol])
         else:
-                slope[pnum,imol]=-9999
-        print(mol.rjust(16),"%8.2f" % baseline[pnum,imol],"%8.2f" %peakval[pnum,imol], end=' ')
-        print("%8.2f" % peaktime[pnum,imol], "%8.3f" %slope[pnum,imol], "%8.2f" %lowval[pnum,imol], end=' ') 
-        if baseline[pnum,imol]>1e-5:
-            print("%8.2f" %(peakval[pnum,imol]/baseline[pnum,imol]))
+                slope[imol,pnum]=-9999
+        print(mol.rjust(16),"%8.2f" % baseline[imol,pnum],"%8.2f" %peakval[imol,pnum], end=' ')
+        print("%8.2f" % peaktime[imol,pnum], "%8.3f" %slope[imol,pnum], "%8.2f" %lowval[imol,pnum], end=' ') 
+        if baseline[imol,pnum]>1e-5:
+            print("%8.2f" %(peakval[imol,pnum]/baseline[imol,pnum]))
         else:
             print("   inf")
 #extract prolong/plateau data 
 duration=end_dur-start_dur
 
-if outputauc==1:            
-    outfname=args[0]+'-'+'analysis'+'-'+args[1]+'.txt'#not adding analysis or aucpeak at the end because we decided to end with the arg
-    header='parval  ' #added speced at the end to have spac in between 
-    header+='           '.join(plot_molecules)+'_'+'auc  '
-    header+='           '.join(plot_molecules)+'_'+'peak'+'\n'
+if outputauc==1:
+    if params==2:
+        outfname=args[0]+'-'+'analysis'+'-'+args[1].split(' ')[0]+'-'+args[1].split(' ')[1]+'.txt'
+    else:
+       outfname=args[0]+'-'+'analysis'+'-'+args[1]+'.txt'         
+    if len(params)<2:
+        header='parval  ' #added speced at the end to have spac in between
+        if len(params)==0:
+            p=args[0]
+        else:
+            p=parval
+    else:
+        header='parval1  parlval2 '
+        p=parval
+    header+='           '.join(plot_molecules)+'_'+'auc_mean  '+'           '.join(plot_molecules)+'_'+'auc_std  '+'           '.join(plot_molecules)+'_'+'peak_mean '+'           '.join(plot_molecules)+'_'+'peak_std '+'\n'
+    #header+='           '.join(plot_molecules)+'_'+'peak'+'\n'
     f=open(outfname, 'w')
     f.write(header)
-    np.savetxt(f,np.column_stack((parval,np.round(auc,3),np.round(peakval,3))),fmt='%1s', delimiter='    , ')#changed from .4f to 1s and it worked
+    np.savetxt(f,np.column_stack((p,np.round(auc_mean[0],3),np.round(auc_std[0],3),np.round(peak_mean[0],3),np.round(peak_std[0],3))),fmt='%1s', delimiter='  ')
     f.close() 
-'''
-#if outputavg_tog==1:
-    outfname=ftuple[0][0:-3]+'_'+mol+'_avg.txt'
-    f=open(outfname, 'w')
-    f.write('time    '+os.path.basename(ftuple[0]).split('.')[0]+'_'+mol+'\n')
-    np.savetxt(f, np.row_stack((time_array[-1],plot_array[-1])).T, fmt='%.4f', delimiter=' ')
-    f.close()
-'''
+
 #####################################################################
 #Now plot some of these molcules, either single voxel or overall average if multi-voxel
 #####################################################################
