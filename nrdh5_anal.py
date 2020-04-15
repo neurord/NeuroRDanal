@@ -47,13 +47,13 @@ show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-outputauc=0
-showplot=1    #2 indicates plot the head conc, 0 means no plots
+outputauc=1
+showplot=0    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=2000 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal, set to -1 for entire duration 
 textsize=20 #for plots.  Make bigger for presentations
-basestarttime=2300
+basestarttime=2200
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
@@ -391,10 +391,9 @@ baseline_auc=np.zeros((num_mols,arraysize,len(trials)))
 auc=np.zeros((num_mols,arraysize,len(trials)))
 auc_mean=np.zeros((num_mols,arraysize))
 auc_std=np.zeros((num_mols,arraysize))
-peak_mean=np.zeros((num_mols,arraysize,len(trials)))
+peak=np.zeros((num_mols,arraysize,len(trials)))
+peak_mean=np.zeros((num_mols,arraysize))
 peak_std=np.zeros((num_mols,arraysize))
-end_auc=np.zeros(len(trials))
-tempauc=np.zeros(len(trials))
 baseline_std=np.zeros((num_mols,arraysize,len(trials)))
 auc_thresh=np.zeros((num_mols,arraysize,len(trials)))
 peakval=np.zeros((num_mols,arraysize))
@@ -420,25 +419,31 @@ for pnum in range(arraysize):
         lowpt=whole_plot_array[imol][pnum][ssend[imol]:].argmin()+ssend[imol]
         lowval[imol,pnum]=whole_plot_array[imol][pnum][lowpt-10:lowpt+10].mean()
         amplitude[imol,pnum]=np.round(peakval[imol][pnum]-baseline[imol][pnum],1)
-        begin_slopeval=0.2*(amplitude[imol][pnum])+baseline[imol][pnum] #get the 5% above the max value
+        begin_slopeval=0.2*(amplitude[imol][pnum])+baseline[imol][pnum] 
         end_slopeval=0.8*(amplitude[imol][pnum])+baseline[imol][pnum]
-        exceedsthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:]>begin_slopeval)
+        exceedsthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:]>begin_slopeval)[0]+ssend[imol]
         begin_slopept=0
         end_slopept=0
         found=0
         #
+        t=int((parval[pnum]*3)//dt[imol]+ssend[imol])
+        end_auc=np.zeros(len(trials))
+        tempauc=np.zeros(len(trials))
+
         
         for trialnum,trial in enumerate(trials):
             basestart=int(basestarttime/dt[imol])
             baseline_auc[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].mean()
             baseline_std[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].std()
-            auc_thresh[imol,pnum,trialnum]=baseline_auc[imol][pnum][trialnum]+0.2*baseline_std[imol][pnum][trialnum]
+            auc_thresh[imol,pnum,trialnum]=baseline_auc[imol][pnum][trialnum]+0*baseline_std[imol][pnum][trialnum]####
             peakpt_auc=auc_array[imol][pnum][trialnum][ssend[imol]:].argmax()+ssend[imol]
-            peak_mean[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][peakpt_auc-window:peakpt_auc+window].mean()
-            peak_std[imol,pnum]=peak_mean[imol,pnum].std()
-            belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_auc:]<auc_thresh[imol][pnum][trialnum])[0]
+            peakpt_t=auc_array[imol][pnum][trialnum][t:].argmax()+t
+            peak[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][peakpt_auc-window:peakpt_auc+window].mean()
+            peak_mean[imol,pnum]=peak[imol,pnum].mean()
+            peak_std[imol,pnum]=peak[imol,pnum].std()
+            belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_t:]<auc_thresh[imol][pnum][trialnum])[0]+peakpt_t
             if len(belowthresh_auc):
-                end_auc[trialnum]=np.min(belowthresh_auc+peakpt_auc)
+                end_auc[trialnum]=np.min(belowthresh_auc)
             else:
                 print ('********* ERK is not returning to basal, raise your threshold by 2**********')
             tempauc[trialnum]=np.sum(auc_array[imol][pnum][trialnum][ssend[imol]:int(end_auc[trialnum])]-baseline_auc[imol][pnum][trialnum])*dt[imol]
@@ -448,24 +453,24 @@ for pnum in range(arraysize):
         
         #
         half_max[imol,pnum]=0.2*(amplitude[imol][pnum])+baseline[imol][pnum]
-        belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol][pnum])
-        if len(belowthresh[0]):
-            start_dur[imol,pnum]=(np.max(belowthresh[0])+ssend[imol])*dt[imol]
-        belowthresh=np.where(whole_plot_array[imol][pnum][peakpt:]<half_max[imol,pnum])
-        if len(belowthresh[0]):
-            end_dur[imol,pnum]=(np.min(belowthresh[0])+peakpt)*dt[imol]
+        belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol][pnum])[0]+ssend[imol]
+        if len(belowthresh):
+            start_dur[imol,pnum]=(np.max(belowthresh))*dt[imol]
+        belowthresh=np.where(whole_plot_array[imol][pnum][peakpt:]<half_max[imol,pnum])[0]+peakpt
+        if len(belowthresh):
+            end_dur[imol,pnum]=(np.min(belowthresh))*dt[imol]
            
         #
-        if len(exceedsthresh[0]):
-            begin_slopept=np.min(exceedsthresh[0])+ssend[imol]
-            begin_durtime=(np.min(exceedsthresh[0])+ssend[imol])
+        if len(exceedsthresh):
+            begin_slopept=np.min(exceedsthresh)
+            begin_durtime=(np.min(exceedsthresh))
             dt[imol]
-            end_durtime=(np.max(exceedsthresh[0])+ssend[imol])*dt[imol]
+            end_durtime=(np.max(exceedsthresh[0]))*dt[imol]
             #print(np.round(begin_durtime,1),np.round( end_durtime,1))
             found=1
-            exceedsthresh2=np.where(whole_plot_array[imol][pnum][begin_slopept:]>end_slopeval)
-            if len(exceedsthresh2[0]):
-                end_slopept=np.min(exceedsthresh2[0])+begin_slopept
+            exceedsthresh2=np.where(whole_plot_array[imol][pnum][begin_slopept:]>end_slopeval)[0]+begin_slopept
+            if len(exceedsthresh2):
+                end_slopept=np.min(exceedsthresh2)
             else:
                 found=0
         if found and len(whole_plot_array[imol][pnum][begin_slopept:end_slopept])>1:
@@ -499,7 +504,7 @@ if outputauc==1:
     #header+='           '.join(plot_molecules)+'_'+'peak'+'\n'
     f=open(outfname, 'w')
     f.write(header)
-    np.savetxt(f,np.column_stack((p,np.round(auc_mean[0],3),np.round(auc_std[0],3),np.round(peak_mean[0],3),np.round(peak_std[0],3))),fmt='%1s', delimiter='  ')
+    np.savetxt(f,np.column_stack((p,np.round(auc_mean[0]/1000,3),np.round(auc_std[0]/1000,3),np.round(peak_mean[0]/1000,3))),fmt='%1s', delimiter='  ')
     f.close() 
 
 #####################################################################
