@@ -47,12 +47,12 @@ show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
 outputavg=0
-outputauc=1
-showplot=0    #2 indicates plot the head conc, 0 means no plots
+outputauc=0
+showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
 auc_mol='2ag'
 endtime=2000 #time to stop calculating AUC - make shorter than entire duration if simulations are dropping below basal, set to -1 for entire duration 
-textsize=20 #for plots.  Make bigger for presentations
+textsize=10 #for plots.  Make bigger for presentations
 basestarttime=2200
 
 #Example of how to total some molecule forms; turn off with tot_species={}
@@ -65,7 +65,7 @@ tot_species=[]
 mol_pairs=[['ppERK','Ca'], ['ppERK','CKpCamCa4'],['cAMP','ppERK']]
 #starting time for pairing 
 plot_start_time=10
-#ending time for paring
+ #ending time for paring
 plot_end_time=300
 ###################################################
 
@@ -406,11 +406,7 @@ for pnum in range(arraysize):
     print(params, parval[pnum])
     print("        molecule  baseline  peakval   ptime    slope      min     ratio")
     for imol,mol in enumerate(plot_molecules):
-      if out_location[mol]!=-1:
-        if endtime==-1:
-              endpt=len(whole_plot_array[imol][pnum])
-        else:
-              endpt=int(endtime/dt[imol])
+ 
         window=int(window_size/dt[imol])
         baseline[imol,pnum]=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
         peakpt=whole_plot_array[imol][pnum][ssend[imol]:].argmax()+ssend[imol]
@@ -426,10 +422,15 @@ for pnum in range(arraysize):
         end_slopept=0
         found=0
         #
-        t=int((parval[pnum]*3)//dt[imol]+ssend[imol])
+       
+        if len(params)==2:
+            stim_time=int((parval[pnum][-1]*3)/dt[imol]+ssend[imol])#get previous to last stimuation time
+        else:
+            stim_time=int((parval[pnum]*3)/dt[imol]+ssend[imol])
+        stim_time=ssend# comment this one when we want to use LTP 
         end_auc=np.zeros(len(trials))
         tempauc=np.zeros(len(trials))
-
+        
         
         for trialnum,trial in enumerate(trials):
             basestart=int(basestarttime/dt[imol])
@@ -437,11 +438,11 @@ for pnum in range(arraysize):
             baseline_std[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].std()
             auc_thresh[imol,pnum,trialnum]=baseline_auc[imol][pnum][trialnum]+0*baseline_std[imol][pnum][trialnum]####
             peakpt_auc=auc_array[imol][pnum][trialnum][ssend[imol]:].argmax()+ssend[imol]
-            peakpt_t=auc_array[imol][pnum][trialnum][t:].argmax()+t
+            peakpt_stim=auc_array[imol][pnum][trialnum][stim_time:].argmax()+stim_time
             peak[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][peakpt_auc-window:peakpt_auc+window].mean()
             peak_mean[imol,pnum]=peak[imol,pnum].mean()
             peak_std[imol,pnum]=peak[imol,pnum].std()
-            belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_t:]<auc_thresh[imol][pnum][trialnum])[0]+peakpt_t
+            belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_stim:]<auc_thresh[imol][pnum][trialnum])[0]+peakpt_stim
             if len(belowthresh_auc):
                 end_auc[trialnum]=np.min(belowthresh_auc)
             else:
@@ -487,12 +488,12 @@ for pnum in range(arraysize):
 duration=end_dur-start_dur
 
 if outputauc==1:
-    if params==2:
+    if len(params)==2:
         outfname=args[0]+'-'+'analysis'+'-'+args[1].split(' ')[0]+'-'+args[1].split(' ')[1]+'.txt'
     else:
        outfname=args[0]+'-'+'analysis'+'-'+args[1]+'.txt'         
     if len(params)<2:
-        header='parval  ' #added speced at the end to have spac in between
+        header='parval  ' 
         if len(params)==0:
             p=args[0]
         else:
@@ -500,11 +501,11 @@ if outputauc==1:
     else:
         header='parval1  parlval2 '
         p=parval
-    header+='           '.join(plot_molecules)+'_'+'auc_mean  '+'           '.join(plot_molecules)+'_'+'auc_std  '+'           '.join(plot_molecules)+'_'+'peak_mean '+'           '.join(plot_molecules)+'_'+'peak_std '+'\n'
+    header+='           '.join(plot_molecules)+'_'+'auc_mean  '+'           '.join(plot_molecules)+'_'+'auc_std  '+'           '.join(plot_molecules)+'_'+'peak_mean '+'\n'
     #header+='           '.join(plot_molecules)+'_'+'peak'+'\n'
     f=open(outfname, 'w')
     f.write(header)
-    np.savetxt(f,np.column_stack((p,np.round(auc_mean[0]/1000,3),np.round(auc_std[0]/1000,3),np.round(peak_mean[0]/1000,3))),fmt='%1s', delimiter='  ')
+    np.savetxt(f,np.column_stack((p,np.round(auc_mean[0]/1000,3),np.round(auc_std[0]/1000,3),np.round(peak_mean[0],3))),fmt='%1s', delimiter='  ')
     f.close() 
 
 #####################################################################
@@ -539,7 +540,8 @@ def plateau ():
 if showplateau==1:
     plateau()
 
-
+     
+        
 #This code is very specific for the Uchi sims where there are two parameters: dhpg and duration
 #it will work with other parameters, as long as there are two of them. Just change the auc_mol
 if auc_mol and auc_mol in plot_molecules and 'dhpg' in params:
@@ -549,6 +551,10 @@ if auc_mol and auc_mol in plot_molecules and 'dhpg' in params:
     for pnum in range(arraysize):
         for imol,mol in enumerate(plot_molecules):
             if out_location[mol]!=-1:
+                if endtime==-1:
+                    endpt=len(whole_plot_array[imol][pnum])
+                else:
+                    endpt=int(endtime/dt[imol])
                 newauc[pnum,imol]=np.sum(whole_plot_array[imol][pnum][ssend[imol]:endpt]-newbaseline)*dt[imol]
     dhpg0index=np.zeros(len(parlist[0]))
     for i,dhpg in enumerate(np.sort(parlist[1])):
