@@ -46,7 +46,7 @@ showpairs=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=0
+outputavg=1
 outputauc=0
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
@@ -406,7 +406,6 @@ for pnum in range(arraysize):
     print(params, parval[pnum])
     print("        molecule  baseline  peakval   ptime    slope      min     ratio")
     for imol,mol in enumerate(plot_molecules):
- 
         window=int(window_size/dt[imol])
         baseline[imol,pnum]=whole_plot_array[imol][pnum][sstart[imol]:ssend[imol]].mean()
         peakpt=whole_plot_array[imol][pnum][ssend[imol]:].argmax()+ssend[imol]
@@ -422,18 +421,18 @@ for pnum in range(arraysize):
         end_slopept=0
         found=0
         #
-       
+        
         if len(params)==2:
-            stim_time=int((parval[pnum][-1]*3)/dt[imol]+ssend[imol])#get previous to last stimuation time
+            stim_time=int(float(parval[pnum][-1])*3/dt[imol]+ssend[imol])#get previous to last stimuation time
         else:
-            stim_time=int((parval[pnum]*3)/dt[imol]+ssend[imol])
-        stim_time=ssend# comment this one when we want to use LTP 
+            stim_time=int(float(parval[pnum])*3/dt[imol]+ssend[imol])
+        stim_time=int(ssend[imol])# comment this one when we want to use LTP 
         end_auc=np.zeros(len(trials))
         tempauc=np.zeros(len(trials))
         
         
         for trialnum,trial in enumerate(trials):
-            basestart=int(basestarttime/dt[imol])
+            basestart=int((basestarttime/dt[imol]))
             baseline_auc[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].mean()
             baseline_std[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][basestart:].std()
             auc_thresh[imol,pnum,trialnum]=baseline_auc[imol][pnum][trialnum]+0*baseline_std[imol][pnum][trialnum]####
@@ -451,7 +450,7 @@ for pnum in range(arraysize):
         auc[imol,pnum]=tempauc
         auc_mean[imol,pnum]=tempauc.mean()
         auc_std[imol,pnum]=tempauc.std()
-        
+
         #
         half_max[imol,pnum]=0.2*(amplitude[imol][pnum])+baseline[imol][pnum]
         belowthresh=np.where(whole_plot_array[imol][pnum][ssend[imol]:peakpt]<half_max[imol][pnum])[0]+ssend[imol]
