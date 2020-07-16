@@ -36,7 +36,7 @@ trialstats=1
 spatialaverage=0
 bins=10
 trial_auc_ratio=0 #calculate ratio of auc to mean auc for dhpg=0.  Only relevant for Uchi simulations
-endpt=2000 #1200 for AUC for Uchi sims, 2000 to find proper peak with bathDaCa; make this another parameter
+endpt=240000 #1200 for AUC for Uchi sims, 2000 to find proper peak with bathDaCa; make this another parameter
 LTPbas =665.53#567.15 #use to calculate ratio of peak versus basal, e.g. for Dp34 or Dp75
 LTDbas=10347.56#10377.95
 #######################################################
@@ -179,12 +179,12 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     else:
         voxel=0
         if outputavg:
-            LTP_sum=np.zeros((len(trials),np.max(rows)))
-            LTD_sum=np.zeros((len(trials),np.max(rows)))
+            LTP_sumTot=LTP_sum=np.zeros((len(trials),np.max(rows)))
+            LTD_sumTot=LTD_sum=np.zeros((len(trials),np.max(rows)))
             outheader="all"
         for mol in all_molecules:
           if out_location[mol]!=-1:
-            outset = out_location[mol]['location'].keys()[0]
+            outset =list(out_location[mol]['location'].keys())[0]
             imol=out_location[mol]['location'][outset]['mol_index']
             tempConc=np.zeros((len(trials),out_location[mol]['samples']))
             time=data[trials[0]]['output'][outset]['times'][:]/msec_per_sec
@@ -192,9 +192,9 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             for trialnum,trial in enumerate(trials):
                 tempConc[trialnum]=data[trial]['output'][outset]['population'][:,voxel,imol]/TotVol/mol_per_nM_u3
             if outputavg:
-                if molecule in ltp_molecules:
+                if mol in ltp_molecules:
                     LTP_sum=LTP_sum+tempConc
-                if molecule in ltd_molecules:
+                if mol in ltd_molecules:
                     LTD_sum=LTD_sum+tempConc
             if numfiles>1:
                  sig_data.append(np.mean(tempConc,axis=0))
@@ -207,7 +207,7 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
                   print("Choose molecules from:", all_molecules)
                   molecule_name_issue=1
               sig_data.append(np.zeros(len(time)))
-              print("molecule", molecule, "not found in output data!!!!!!!!!!!")
+              print("molecule", mol, "not found in output data!!!!!!!!!!!")
     ######################################
     #Whether 1 voxel or multi-voxel, create array of means for all molecules, all files, all trials
     ##########################################
@@ -233,11 +233,12 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             outputavg=1
         if len(sum_name)<2:
             sum_name.append('ltdmol')
+        sum_name=[]
         if trialstats:
             basalstrt=sstart[0] 
             basalend=ssend[0] 
-            if fnum==0:
-                print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
+            #if fnum==0:
+             #   print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
             LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
             LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
             overall_baseline.append(LTD_basal)
@@ -331,8 +332,12 @@ else:
 ltp_above_thresh=np.zeros((len(parval),num_regions))
 ltd_above_thresh=np.zeros((len(parval),num_regions))
 lengths=[np.shape(signature_array[0][x])[0] for x in range(numfiles)]
-sig_ltp=np.zeros((len(parval),np.max(lengths),num_regions))
-sig_ltd=np.zeros((len(parval),np.max(lengths),num_regions))
+if maxvols>1:
+    sig_ltp=np.zeros((len(parval),np.max(lengths),num_regions))
+    sig_ltd=np.zeros((len(parval),np.max(lengths),num_regions))
+else:
+    sig_ltp=np.zeros((len(parval),np.max(lengths)))
+    sig_ltd=np.zeros((len(parval),np.max(lengths)))
 #############################
 #customize this part.  E.g.
 #add values of LTP molecules, subtract LTD molecules; or accumulate each signature separately
@@ -365,7 +370,7 @@ if maxvols==1:
         auc[par]=np.sum(sig_ltp[par,:])*dt[0]/msec_per_sec
         if len(ltd_molecules):
             auc[par]=auc[par]-np.sum(sig_ltd[par,:])*dt[0]/msec_per_sec
-        auc_label.append(label+" auc="+str(np.round(auc[par],2)))
+        auc_label.append(str(label)+" auc="+str(np.round(auc[par],2)))
 else:
     auc_label=[[] for sp in range(len(parval))]
     if spatialaverage:
