@@ -86,7 +86,6 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     #   Extract region and structure voxels and volumes
     ##########################################################
     if maxvols>1 and fnum==0:
-        molecules=data['model']['species'][:]
         structType=data['model']['grid'][:]['type']
         region_list,region_dict,region_struct_dict=h5utils.subvol_list(structType,data['model'])
         #
@@ -110,6 +109,7 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     ##########################################################
     if fnum==0:
     #
+        molecules=data['model']['species'][:]
         #Get list of molecules for LTP and list for LTD.  identify which output sets and voxels they are in
         num_ltpmols=len(ltp_molecules)
         num_ltdmols=len(ltd_molecules)
@@ -178,6 +178,7 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
     ######################################
     else:
         voxel=0
+        num_regions=1
         if outputavg:
             LTP_sumTot=LTP_sum=np.zeros((len(trials),np.max(rows)))
             LTD_sumTot=LTD_sum=np.zeros((len(trials),np.max(rows)))
@@ -193,9 +194,9 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
                 tempConc[trialnum]=data[trial]['output'][outset]['population'][:,voxel,imol]/TotVol/mol_per_nM_u3
             if outputavg:
                 if mol in ltp_molecules:
-                    LTP_sum=LTP_sum+tempConc
+                    LTP_sumTot=LTP_sum=LTP_sum+tempConc
                 if mol in ltd_molecules:
-                    LTD_sum=LTD_sum+tempConc
+                    LTD_sumTot=LTD_sum=LTD_sum+tempConc
             if numfiles>1:
                  sig_data.append(np.mean(tempConc,axis=0))
                  #sig_data dimensions=number of molecules x sample times
@@ -203,12 +204,12 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
                 #sig_data dimensions=number of molecules (x number of trials) x sample times
                 sig_data.append(tempConc)
           else:
-              if fnum==0 and molecule_name_issue==0:
-                  print("Choose molecules from:", all_molecules)
-                  molecule_name_issue=1
               sig_data.append(np.zeros(len(time)))
               print("molecule", mol, "not found in output data!!!!!!!!!!!")
-    ######################################
+              if fnum==0 and molecule_name_issue==0:
+                  print("Choose molecules from:", molecules)
+                  molecule_name_issue=1
+     ######################################
     #Whether 1 voxel or multi-voxel, create array of means for all molecules, all files, all trials
     ##########################################
     if numfiles>1:
@@ -229,16 +230,13 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
         if len(args)>6:
             sum_name=args[6].split()
         if len(args)<=6 or len(sum_name)==0:
-            sum_name=[ltp_molecules[0],ltd_molecules[0]]
+            sum_name=['LTPmol','LTDmol']
             outputavg=1
-        if len(sum_name)<2:
-            sum_name.append('ltdmol')
-        sum_name=[]
         if trialstats:
             basalstrt=sstart[0] 
             basalend=ssend[0] 
-            #if fnum==0:
-             #   print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
+            if fnum==0:
+               print('STATISTICS', sum_name[0],'trials, stderr  ',sum_name[1],'trials, stderr')
             LTP_basal=np.mean(LTP_sumTot[:,basalstrt:basalend],axis=1)
             LTD_basal=np.mean(LTD_sumTot[:,basalstrt:basalend],axis=1)
             overall_baseline.append(LTD_basal)
@@ -257,10 +255,11 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             LTP_auc=[np.sum(normP[i][ssend[0]:endpt])*dt[0]/msec_per_sec for i in range(len(trials))]
             if trial_auc_ratio:
                 LTD_auc_all[ftuple[1][0]][ftuple[1][1]]=LTD_auc
-            print('peak',np.round(LTP_peak,1), np.round(LTD_peak,1), 'min',np.round(LTP_min,1), np.round(LTD_min,1))
+            print('peak',np.round(LTP_peak,1), np.round(LTD_peak,1), '\nmin',np.round(LTP_min,1), np.round(LTD_min,1))
             #print('peak ratio',np.round(np.array(LTP_peak)/LTPbas,3), np.round(np.array(LTD_peak)/LTDbas,3), 'min',np.round(np.array(LTP_min)/LTPbas,3), np.round(np.array(LTD_min)/LTDbas,3))
             print('auc', np.round(LTP_auc,2),np.round(np.mean(LTP_auc),2),np.round(LTD_auc,2),np.round(np.mean(LTD_auc),2))
         for num,nm in enumerate(sum_name):
+            ##### Header for text file
             sum_header='time  '
             for item in outheader.split():
                 newitem=[item.split('_')[-1]+nm+'_t'+str(t)+' ' for t in range(len(trials))]
@@ -270,22 +269,26 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             sum_header=sum_header+"".join(mean_head)+"".join(stdev_head)
             Overall_header=[nm+'_t'+str(t)+' ' for t in range(len(trials))]+[nm+"mean ",nm+"stdev"]
             sum_header=sum_header+"".join(Overall_header)
+            ### end header
             num_trials=len(trials)
-            cols=num_trials*num_regions
             sum_rows=np.shape(LTP_sum)[1]
-            outdata=np.zeros((sum_rows,cols))
-            outmean=np.zeros((sum_rows,num_regions))
-            outstd=np.zeros((sum_rows,num_regions))
             outOverall=np.zeros((sum_rows,num_trials+2))
-            for p in range(num_regions):
-                outdata[:,p*num_trials:(p+1)*num_trials]=sum_array[num][:,:,p].T
-                #outdata[:,p*num_trials:(p+1)*num_trials]=LTD_sum[:,:,p].T
-                outmean[:,p]=np.mean(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
-                outstd[:,p]=np.std(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
             outOverall[:,range(num_trials)]=Tot_array[num].T
             outOverall[:,num_trials]=np.mean(outOverall[:,range(num_trials)],axis=1)
             outOverall[:,num_trials+1]=np.std(outOverall[:,range(num_trials)],axis=1)
-            outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
+            if num_regions>1:
+                cols=num_trials*num_regions
+                outdata=np.zeros((sum_rows,cols))
+                outmean=np.zeros((sum_rows,num_regions))
+                outstd=np.zeros((sum_rows,num_regions))
+                for p in range(num_regions):
+                    outdata[:,p*num_trials:(p+1)*num_trials]=sum_array[num][:,:,p].T
+                    #outdata[:,p*num_trials:(p+1)*num_trials]=LTD_sum[:,:,p].T
+                    outmean[:,p]=np.mean(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+                    outstd[:,p]=np.std(outdata[:,p*num_trials:(p+1)*num_trials],axis=1)
+                outputdata=np.column_stack((time,outdata,outmean,outstd,outOverall))
+            else:
+                outputdata=np.column_stack((time,outOverall))
             if outputavg>1:
                 if spatialaverage:
                     suffix='dend'
@@ -306,7 +309,7 @@ for fnum,ftuple in enumerate(sorted(ftuples, key=lambda x:x[1])):
             min_sum=outOverall[minpt_sum-window:minpt_sum+window,num_trials].mean()
             if fnum==0 and num==0:
                 print ('fname                     base   peak    inc     min     dec')
-            print ('{0:25}  {1:.1f}  {2:.1f}  {3:.3f}  {4:.1f}  {5:.3f}'.format(''.join(parval[fnum])+nm,base_sum,peak_sum,peak_sum/base_sum,min_sum,min_sum/base_sum))
+            print ('{0:25}  {1:.1f}  {2:.1f}  {3:.3f}  {4:.1f}  {5:.3f}'.format(str(parval[fnum])+' '+nm,base_sum,peak_sum,peak_sum/base_sum,min_sum,min_sum/base_sum))
 if trial_auc_ratio:
     print('overall baseline',np.round(np.mean(overall_baseline),3),'use on line 251 for more consistent baseline subtraction' )
     print ('auc calculated between',ssend[0]*dt,'and', endpt*dt, ', ratio with the 0dhpg case')
