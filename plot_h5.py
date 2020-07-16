@@ -119,19 +119,19 @@ def plot_signature(condition,traces,dt,figtitle,sign_title,textsize,thresholds,m
      axis=fig.axes
      if numrows==1:
           if len(condition)>1:
-               colinc=len(colors)/(len(condition)-1)
+               colinc=len(colors.colors)/(len(condition)-1)
           else:
                colinc=0
           for i,cond in enumerate(condition):
                numpoints=np.shape(traces[i])[0]
                newtime = np.linspace(0,dt*(numpoints-1), numpoints+1)
-               axis[0].plot(newtime,traces[i],label=cond,color=colors[int(i*colinc)])
+               axis[0].plot(newtime,traces[i],label=cond,color=colors.colors[int(i*colinc)])
                axis[0].legend(fontsize=legtextsize, loc='best')
                axis[0].set_ylabel('LTP sig (nM) ',fontsize=textsize)
                axis[0].set_xlabel('Time (sec)',fontsize=textsize)
                axis[0].tick_params(labelsize=textsize)
                if plot_ltd:
-                    axis[1].plot(newtime,moretraces[i],color=colors[int(i*colinc)])
+                    axis[1].plot(newtime,moretraces[i],color=colors.colors[int(i*colinc)])
                     axis[1].set_ylabel('LTD sig (nM) ',fontsize=textsize)
                     axis[1].set_xlabel('Time (sec)',fontsize=textsize)
      else:
