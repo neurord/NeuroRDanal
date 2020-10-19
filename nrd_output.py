@@ -188,7 +188,7 @@ class nrdh5_output(object):
                 else:
                     headmean=[np.mean(np.mean(self.means['region'][mol][:,self.sstart[imol]:self.ssend[imol],self.head],axis=1),axis=0)]
                     headmax=[np.mean(np.max(self.means['region'][mol][:,self.ssend[imol]:,self.head],axis=1),axis=0)]
-                outputline+="   head ss: "+' '.join([str(np.round(h,3)) for h in headmean])+'pk: '+' '.join([str(np.round(h,3)) for h in headmax])
+                outputline+="   head ss: "+' '.join([str(np.round(h,3)) for h in headmean])+' pk: '+' '.join([str(np.round(h,3)) for h in headmax])
             if self.dsm_vox:
                 dsm_mean=np.mean(np.mean(self.means['struct'][mol][:,self.sstart[imol]:self.ssend[imol],self.dsm_index],axis=1),axis=0)
                 dsm_max=np.mean(np.max(self.means['struct'][mol][:,self.ssend[imol]:,self.dsm_index],axis=1),axis=0)

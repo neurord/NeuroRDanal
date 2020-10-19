@@ -117,18 +117,13 @@ def argparse(args):
                 newftuples=[(tup[0],(float(tup[1][0]),tup[1][1])) for tup in ftuples]
             if par0_is_float and par1_is_float: 
                 newftuples=[(tup[0],(float(tup[1][0]),float(tup[1][1]))) for tup in ftuples]
-			if not par0_is_float and not par1_is_float:
-                newftuples=[(tup[0],(tup[1][0],tup[1][1])) for tup in ftuples]
         elif par0_is_float:
-           par1_is_float=False
             newftuples=[(tup[0],tuple((float(tup[1]),))) for tup in ftuples]
-         else:
             par1_is_float=False
-            newftuples=[(tup[0],tuple((tup[1],))) for tup in ftuples]
+        else:
+            par1_is_float=False
         if par0_is_float or par1_is_float:
             ftuples=sorted(newftuples,key=lambda x:x[1])
-		else:
-			ftuples=newftuples
         return ftuples,parlist
 
     #1st and 2nd arguements used to construct pattern for reading in multiple files
