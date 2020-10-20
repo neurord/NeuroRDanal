@@ -183,14 +183,14 @@ class nrdh5_output(object):
             outputline=mol.rjust(14)
             if self.spinelist:
                 if len(self.spinelist)>1:
-                    headmean=[np.mean(np.mean(self.means['spines'][mol][:,self.sstart[imol]:self.ssend[imol],sp],axis=1),axis=0) for sp in self.stim_spine_index]
-                    headmax=[np.mean(np.max(self.means['spines'][mol][:,self.ssend[imol]:,sp],axis=1),axis=0) for sp in self.stim_spine_index]
+                    headmean=[np.mean(np.mean(self.means['spines'][mol][:,self.sstart[mol]:self.ssend[mol],sp],axis=1),axis=0) for sp in self.stim_spine_index]
+                    headmax=[np.mean(np.max(self.means['spines'][mol][:,self.ssend[mol]:,sp],axis=1),axis=0) for sp in self.stim_spine_index]
                 else:
-                    headmean=[np.mean(np.mean(self.means['region'][mol][:,self.sstart[imol]:self.ssend[imol],self.head],axis=1),axis=0)]
-                    headmax=[np.mean(np.max(self.means['region'][mol][:,self.ssend[imol]:,self.head],axis=1),axis=0)]
+                    headmean=[np.mean(np.mean(self.means['region'][mol][:,self.sstart[mol]:self.ssend[mol],self.head],axis=1),axis=0)]
+                    headmax=[np.mean(np.max(self.means['region'][mol][:,self.ssend[mol]:,self.head],axis=1),axis=0)]
                 outputline+="   head ss: "+' '.join([str(np.round(h,3)) for h in headmean])+' pk: '+' '.join([str(np.round(h,3)) for h in headmax])
             if self.dsm_vox:
-                dsm_mean=np.mean(np.mean(self.means['struct'][mol][:,self.sstart[imol]:self.ssend[imol],self.dsm_index],axis=1),axis=0)
-                dsm_max=np.mean(np.max(self.means['struct'][mol][:,self.ssend[imol]:,self.dsm_index],axis=1),axis=0)
+                dsm_mean=np.mean(np.mean(self.means['struct'][mol][:,self.sstart[mol]:self.ssend[mol],self.dsm_index],axis=1),axis=0)
+                dsm_max=np.mean(np.max(self.means['struct'][mol][:,self.ssend[mol]:,self.dsm_index],axis=1),axis=0)
                 outputline+="   dend sm: %8.4f pk %8.4f" %(dsm_mean,dsm_max)
             print(outputline)
