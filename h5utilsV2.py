@@ -125,9 +125,9 @@ def argparse(args):
         else:
             par1_is_float=False
         if par0_is_float or par1_is_float:
-            ftuples=sorted(newftuples,key=lambda x:x[1])
-		else:
-			ftuples=newftuples
+		ftuples=sorted(newftuples,key=lambda x:x[1])
+	else:
+		ftuples=newftuples
         return ftuples,parlist
 
     #1st and 2nd arguements used to construct pattern for reading in multiple files
