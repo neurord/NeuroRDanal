@@ -28,9 +28,9 @@ submembname='sub'
 dendname="dend"
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
-spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
+spatial_bins=1  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
-num_LTP_stim=4 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
+num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
@@ -42,8 +42,8 @@ textsize=14
 feature_list=[]#'auc','amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
-pairs_timeframe=[200,2000] #units are sec
-basestart_time=2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
+pairs_timeframe=[]#[200,2000] #units are sec
+basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 write_trials=0
 
 #for totaling subspecies, the default outputset is _main_, 
