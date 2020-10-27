@@ -5,3 +5,7 @@
 *.tiff
 *.ode
 *.jpg
+*.h5
+*.xml
+*#
+*.txt
