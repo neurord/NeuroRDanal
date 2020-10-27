@@ -28,14 +28,14 @@ submembname='sub'
 dendname="dend"
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
-spatial_bins=1  #number of spatial bins to subdivide dendrite to look at spatial gradients
+spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
 output_auc=0 #one file per molecule per set of input files
-showplot=1 #0 for none, 1 for overall average, 2 for spine concentration
+showplot=2 #0 for none, 1 for overall average, 2 for spine concentration
 show_mol_totals=0
 print_head_stats=0
 textsize=14
@@ -91,7 +91,7 @@ for fnum,ftuple in enumerate(og.ftuples):
     data=nrdh5_output(ftuple)
     data.rows_and_columns(plot_molecules,args)
     data.molecule_population()
-    print(data.data['model']['grid'][:])
+    #print(data.data['model']['grid'][:])
     if data.maxvols>1:
         data.region_structures(dendname,submembname,spinehead,stimspine) #stimspine is optional
         if spatial_bins>0:
@@ -138,13 +138,13 @@ for fnum,ftuple in enumerate(og.ftuples):
 
 ######################### Plots
 if showplot:
-    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(stimspine),showplot)
+    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),showplot)
     if showplot==2 and len(stimspine):
-        figtitle=figtitle+' '+stimspine
+        figtitle=figtitle+' '+' '.join(stimspine)
     #else:
     #    figtitle=figtitle+' nonspine'
     fig.canvas.set_window_title(figtitle)
-    pu5.plottrace(data.molecules,og,fig,col_inc,scale,stimspine,showplot,textsize=textsize)
+    pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
         pu5.plot_signature(tot_species,og,figtitle,col_inc,textsize=textsize)    #plot some feature values
@@ -156,7 +156,6 @@ if showplot:
         pu5.pairs(og,mol_pairs,pairs_timeframe)
 
 '''
-5. Move Nadia's pairs plots into plot_h5V2
 7. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     Create separate class?  Or add weight into total_species.  Add in baseline subtract as option?
     perhaps separate function to compare to thresholds
@@ -164,7 +163,7 @@ if showplot:
     lines 341-360 calculates the signature
     lines 370-387 compares to thresholds
     #EXTRACT FEATURES OF total array to add in sig.py functionality
-8. possible calculate some feature value relative to a control group (e.g. auc_ratio)
+8. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
 Once working
 1. create real arg parser - to avoid position dependence - especially add numstim (or read from h5file)
 2. possibly try to figure out how to extract number of stimuli

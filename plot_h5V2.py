@@ -80,7 +80,7 @@ def plot_setup(plot_molecules,data,num_spines,plottype):
           if len(paramset)>1:
                col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
                if plottype==2 and num_spines>1:
-                    col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines-1)
+                    col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
           else:
                col_inc[i]=0.0
      return fig,col_inc,scale
@@ -99,7 +99,7 @@ def get_color_label(parlist,params,colinc):
         color_index=int(parlist[par_index].index(params[par_index])*colinc[par_index]*partial_scale)
         mycolor=colors2D[map_index].__call__(color_index+offset[map_index])
     plotlabel='-'.join([str(k) for k in params])
-    return mycolor,plotlabel,par_index
+    return mycolor,plotlabel,par_index,map_index
  
 def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
      num_spines=len(stimspines)
@@ -111,18 +111,17 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
              mycolor=[0,0,0]
              plotlabel=''
         else:
-            mycolor,plotlabel,par_index=get_color_label(dataset.parlist,param,colinc)
+            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
        #Second, plot each molecule
         for imol,mol in enumerate(plotmol):
             #axis[imol].autoscale(enable=True,tight=False)
             maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param][mol])[1])
             if num_spines>1 and plottype==2:
-                 for spnum,sp in enumerate(stimspines):
-                      new_index=int((dataset.parlist[par_index].index(param)*num_spines+spnum)*colinc[par_index]*partial_scale)
-                      #Note: this will not give expected color if 2 dimensions of parameters
-                      new_col=colors.colors[new_index]
-                      axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0).T[spnum],
-                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
+                for spnum,sp in enumerate(stimspines):
+                     new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
+                     new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
+                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                                     label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
             else:
                  axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
             axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
@@ -145,13 +144,15 @@ def plotss(plot_mol,xparval,ss):
 
 def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
     numcols=len(tot_species)
+    #Will need to specify whether plotting spine (and non-spine) totals, or perhaps region totals
+    #add additional total arrays in nrd_group
     numrows= 1 #one row for each region  For now, there is only an overall sum
     row=0 #once multiple rows, will loop over rows, and region as y label, mol as column heading?
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.set_window_title(figtitle+'Totals')
     axis=fig.axes
     for i,(param,ss_tot) in enumerate(dataset.file_set_tot.items()):
-        mycolor,plotlabel,_tmp=get_color_label(dataset.parlist,param,colinc)
+        mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
         for col,(mol,trace) in enumerate(ss_tot.items()): 
             #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
             ax=col+row*numrows

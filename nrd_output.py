@@ -134,7 +134,7 @@ class nrdh5_output(object):
             if mol in sub_species.keys():
                 mol_set=sub_species[mol]
             else:
-                mol_set=[subsp for subsp in h5utils.decode(self.data['model']['output'][outset]['species'][:]) if mol in subsp]
+                mol_set=[subsp for subsp in self.all_molecules if mol in subsp] #h5utils.decode(self.data['model']['output'][outset]['species'][:])
             self.tot_species[mol]=mol_set
             out_location,dt,rows=h5utils.get_mol_info(self.data, mol_set)
             if len(args)>3: 

@@ -18,6 +18,7 @@ class nrdh5_group(object):
         self.regions_structure_means={k[1]:{} for k in self.ftuples}
         self.spine_means={k[1]:{} for k in self.ftuples}
         if len(tot_species):
+            #Expand this to include spine_means and other spatial information
             self.file_set_tot={k[1]:{sp:[] for sp in tot_species} for k in self.ftuples}
             self.tot_species=tot_species
             self.endtime={k[1]:{sp:[] for sp in tot_species} for k in self.ftuples}
@@ -44,6 +45,7 @@ class nrdh5_group(object):
             else:
                 self.spatial_data=None
         if len(data.ss_tot):
+            #Expand this to include spine_means and other spatial information
             for imol,sp in enumerate(self.file_set_tot[data.parval].keys()):
                 self.file_set_tot[data.parval][sp]=data.ss_tot[sp][:,:]
                 self.sstart[sp]=data.sstart[sp]
