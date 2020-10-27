@@ -5,7 +5,7 @@ Created on Tue Apr 28 15:59:11 2020
 @author: kblackw1
 """
 import numpy as np
-import h5utilsV2 as h5utils
+from NeuroRDanal import h5utilsV2 as h5utils
 
 ms_to_sec=1000
 class nrdh5_group(object): 

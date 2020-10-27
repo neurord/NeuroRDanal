@@ -19,9 +19,9 @@ additional parameters lines 27-45
 import numpy as np
 import sys
 
-import plot_h5V2 as pu5
-from nrd_output import nrdh5_output
-from nrd_group import nrdh5_group
+from NeuroRDanal import plot_h5V2 as pu5
+from NeuroRDanal.nrd_output import nrdh5_output
+from NeuroRDanal.nrd_group import nrdh5_group
 
 #probably add some of these to args with defaults once real arg parser is written
 submembname='sub'
