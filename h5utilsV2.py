@@ -153,7 +153,7 @@ def argparse(args):
         print("FILES:", *glob.glob(subdir+'/'+'*.h5'), sep='\n')
         raise IOError("no files found")
 
-    parlist=[]
+   
     if len(args[1]):
         ftuples,parlist=file_tuple(fnames,params)
         ftuples = sorted(ftuples, key=lambda x:x[1])
@@ -167,7 +167,8 @@ def argparse(args):
             ftuples,parlist=file_tuple(fnames,params)
             ftuples = sorted(ftuples, key=lambda x:x[1])
         else:
-            ftuples=[(fnames[0],('1'))]
+            ftuples=[(fnames[0],('1',))]
+            parlist=[['1'],[]]
     return ftuples,parlist,params #list of filenames with params, list of just params
 
 def file_tuple(fnames,params):

@@ -27,19 +27,19 @@ from NeuroRDanal.nrd_group import nrdh5_group
 submembname='sub'
 dendname="dend"
 spinehead="head"
-stimspine=['sa1[0]'] #list of stimulated spines
+stimspine=[]#['sa1[0]'] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
-num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
+num_LTP_stim=4 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
 output_auc=0 #one file per molecule per set of input files
-showplot=2 #0 for none, 1 for overall average, 2 for spine concentration
+showplot=1 #0 for none, 1 for overall average, 2 for spine concentration
 show_mol_totals=0
-print_head_stats=1
+print_head_stats=0
 textsize=14
-feature_list=[]#'auc','amplitude']
+feature_list=['auc']#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
@@ -64,11 +64,11 @@ sub_species={'ras':['rasGap','RasGTPGap'],
              'CamCa':['CamCa4','CamCa2C','CamCa2N','PP2BCamCa2C','PP2BCamCa2N', 'PP2BCamCa4']}
 
 #subspecies of tot_species do NOT need to be specified as plot_molecules 
-sub_species={'syn_act':['RasSynGap', 'RaspSynGap','Rap1SynGap', 'Rap1pSynGap','SynGap','pSynGap'],'syn_inact':['pSynden','CKpCamCa4SynGap'],'Rasgrf':['CamCa4GRFRas','CamCa4GRF'],'grf':['CamCa4GRF','CamCa4GRFRas'],'gef':['RasGTP','Rap1GTP']}
+#sub_species={'syn_act':['RasSynGap', 'RaspSynGap','Rap1SynGap', 'Rap1pSynGap','SynGap','pSynGap'],'syn_inact':['pSynden','CKpCamCa4SynGap'],'Rasgrf':['CamCa4GRFRas','CamCa4GRF'],'grf':['CamCa4GRF','CamCa4GRFRas'],'gef':['RasGTP','Rap1GTP']}
 #weights are multiplies for calculating weighted sum, i.e., signature
 #weight={'RasSynGap':-1, 'RaspSynGap':-1.4,'Rap1SynGap':-1, 'Rap1pSynGap':-1.9,'SynGap':-1,'pSynGap':-1.65,'pSynden':1,'CKpCamCa4SynGap':1}
 weight={}  #setting weight to empty dictionary will make all weights = 1
-tot_species=[]#['syn_act','syn_inact','grf','gef']   
+tot_species=['RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
 ############## END OF PARAMETERS #################
 try:
     args = ARGS.split(",")

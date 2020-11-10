@@ -91,6 +91,7 @@ def get_color_label(parlist,params,colinc):
     else:
         par_index=1
     if len(parlist[1])==0 or len(parlist[0])==0:
+        map_index=0
         color_index=int(parlist[par_index].index(params[par_index])*colinc[par_index]*partial_scale)
         mycolor=colors.colors[color_index]
     else:

@@ -22,7 +22,7 @@ class nrdh5_output(object):
         self.seeds=[self.data[trial].attrs['simulation_seed'] for trial in self.trials]
         self.outputsets=self.data[self.trials[0]]['output'].keys()
         self.head=None
-        self.spinelist=None
+        self.spinelist=[]
         self.dsm_vox=None
         self.spatial_dict=None
         print('file:',self.fname,'parameters:',self.parval,'volume',self.TotVol,'voxels',self.maxvols,'trials',self.trials)
