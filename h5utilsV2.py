@@ -36,7 +36,7 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
                 if ssend[mol]>rows[imol]:
                     ssend[mol]=0.1*rows[imol]
                     sstart[mol]=0.075*rows[imol]
-                    print ("WARNING *****. ssend exceeds sim time, reassigning to ", ssend[mol]*dt)
+                    print ("WARNING *****. ssend exceeds sim time, reassigning to ", ssend[mol]*dt[mol])
     else:
         for imol,mol in enumerate(molecule_list):
             if out_location[molecule]!=-1:

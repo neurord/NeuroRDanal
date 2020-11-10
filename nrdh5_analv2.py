@@ -37,7 +37,7 @@ write_output=0 #one file per molecules per input file
 output_auc=0 #one file per molecule per set of input files
 showplot=2 #0 for none, 1 for overall average, 2 for spine concentration
 show_mol_totals=0
-print_head_stats=0
+print_head_stats=1
 textsize=14
 feature_list=[]#'auc','amplitude']
 #these molecules MUST be specified as plot_molecules

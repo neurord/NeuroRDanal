@@ -34,7 +34,10 @@ class nrdh5_output(object):
         if spinehead in self.region_dict.keys():
             self.head=spinehead
             self.spinelist,self.spinevox=h5utils.multi_spines(self.data['model'])
-            self.stim_spine_index=[self.spinelist.index(stimsp) for stimsp in stimspine]        #
+            if stimspine is not None:
+                self.stim_spine_index=[self.spinelist.index(stimsp) for stimsp in stimspine]        #
+            else:
+                self.stim_spine_index=-1
             #create "group" dictionary-spinelist & spinevox, with one more for nonspine voxels
         dsm_name=dendname+submembname
         if dsm_name in self.region_struct_dict.keys():
@@ -182,7 +185,7 @@ class nrdh5_output(object):
         for imol,mol in enumerate(self.molecules):
             outputline=mol.rjust(14)
             if self.spinelist:
-                if len(self.spinelist)>1:
+                if len(self.spinelist)>1 and self.stim_spine_index>-1:
                     headmean=[np.mean(np.mean(self.means['spines'][mol][:,self.sstart[mol]:self.ssend[mol],sp],axis=1),axis=0) for sp in self.stim_spine_index]
                     headmax=[np.mean(np.max(self.means['spines'][mol][:,self.ssend[mol]:,sp],axis=1),axis=0) for sp in self.stim_spine_index]
                 else:
