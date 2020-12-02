@@ -27,19 +27,19 @@ from NeuroRDanal.nrd_group import nrdh5_group
 submembname='sub'
 dendname="dend"
 spinehead="head"
-stimspine=[]#['sa1[0]'] #list of stimulated spines
+stimspine=['sa1[0]'] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
-num_LTP_stim=4 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
+num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
-output_auc=0 #one file per molecule per set of input files
-showplot=1 #0 for none, 1 for overall average, 2 for spine concentration
+output_auc=1 #one file per molecule per set of input files
+showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
-print_head_stats=0
+print_head_stats=1
 textsize=14
-feature_list=['auc']#,'amplitude']
+feature_list=[]#['auc']#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
@@ -68,7 +68,7 @@ sub_species={'ras':['rasGap','RasGTPGap'],
 #weights are multiplies for calculating weighted sum, i.e., signature
 #weight={'RasSynGap':-1, 'RaspSynGap':-1.4,'Rap1SynGap':-1, 'Rap1pSynGap':-1.9,'SynGap':-1,'pSynGap':-1.65,'pSynden':1,'CKpCamCa4SynGap':1}
 weight={}  #setting weight to empty dictionary will make all weights = 1
-tot_species=['RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
+tot_species=[]#'RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
 ############## END OF PARAMETERS #################
 try:
     args = ARGS.split(",")
@@ -141,9 +141,11 @@ if showplot:
     fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),showplot)
     if showplot==2 and len(stimspine):
         figtitle=figtitle+' '+' '.join(stimspine)
-    #else:
-    #    figtitle=figtitle+' nonspine'
-    fig.canvas.set_window_title(figtitle)
+    if showplot==3:
+        for spnum,sp in enumerate(data.spinelist):
+            fig[spnum].suptitle(figtitle+' '+sp)
+    else:
+        fig.canvas.set_window_title(figtitle)
     pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):

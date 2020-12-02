@@ -66,24 +66,30 @@ def spatial_plot(data,dataset):
             axes[imol,trial].set_xlabel('time (ms)')
              
 def plot_setup(plot_molecules,data,num_spines,plottype):
-     pyplot.ion()
-     if len(plot_molecules)>8:
+    pyplot.ion()
+    if len(plot_molecules)>8:
           rows=int(np.round(np.sqrt(len(plot_molecules))))
           cols=int(np.ceil(len(plot_molecules)/float(rows)))
-     else:
+    else:
           cols=1
           rows=len(plot_molecules)
-     fig,axes=pyplot.subplots(rows, cols,sharex=True) #n rows,  1 column #,figsize=(4*cols,rows)
-     col_inc=[0.0,0.0]
-     scale=['lin','lin']
-     for i,paramset in enumerate(data.parlist):
-          if len(paramset)>1:
+    if plottype==3:
+        fig=[]
+        for sp in range(num_spines):
+            f,a=pyplot.subplots(rows, cols,sharex=True) #n rows,  1 column #,figsize=(4*cols,rows)
+            fig.append(f)
+    else:
+        fig,axes=pyplot.subplots(rows, cols,sharex=True)
+    col_inc=[0.0,0.0]
+    scale=['lin','lin']
+    for i,paramset in enumerate(data.parlist):
+         if len(paramset)>1:
                col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
                if plottype==2 and num_spines>1:
-                    col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
-          else:
+                   col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
+         else:
                col_inc[i]=0.0
-     return fig,col_inc,scale
+    return fig,col_inc,scale
 
 def get_color_label(parlist,params,colinc):
     if len(parlist[1])<len(parlist[0]):
@@ -103,34 +109,53 @@ def get_color_label(parlist,params,colinc):
     return mycolor,plotlabel,par_index,map_index
  
 def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
-     num_spines=len(stimspines)
-     print("plottrace: plotmol,parlist,parval:", plotmol,dataset.parlist,[p[1] for p in dataset.ftuples])
-     axis=fig.axes  #increments col index 1st
-     for (fname,param) in dataset.ftuples:
+    num_spines=len(stimspines)
+    print("plottrace: plotmol,parlist,parval:", plotmol,dataset.parlist,[p[1] for p in dataset.ftuples])
+    if plottype==3:
+        axis=[]
+        for sp in range(num_spines):
+            axis.append(fig[sp].axes)
+    else:
+        axis=fig.axes  #increments col index 1st
+    print('***************','shape of axis', np.shape(axis))
+    for (fname,param) in dataset.ftuples:
         #First, determine the color scaling
         if len(dataset.parlist)==0:
-             mycolor=[0,0,0]
-             plotlabel=''
+            mycolor=[0,0,0]
+            plotlabel=''
         else:
             mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
-       #Second, plot each molecule
+            #Second, plot each molecule
         for imol,mol in enumerate(plotmol):
             #axis[imol].autoscale(enable=True,tight=False)
             maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param][mol])[1])
             if num_spines>1 and plottype==2:
                 for spnum,sp in enumerate(stimspines):
-                     new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
-                     new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
-                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                    new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
+                    new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
+                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
+            elif plottype==3:
+                for spnum,sp in enumerate(stimspines):
+                    axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                                        label=plotlabel,color=mycolor)
+                    axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
+                    axis[spnum][imol].tick_params(labelsize=textsize)
+                    axis[spnum][imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
+                
             else:
-                 axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
-            axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
-            axis[imol].tick_params(labelsize=textsize)
-            axis[imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
-     axis[imol].legend(fontsize=legtextsize, loc='best')
-     fig.canvas.draw()
-     return
+                axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
+            if plottype<3:
+                axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
+                axis[imol].tick_params(labelsize=textsize)
+                axis[imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
+    if plottype==3:
+        for spnum,sp in enumerate(stimspines):
+            axis[spnum][imol].legend(fontsize=legtextsize, loc='best')
+    else:
+        axis[imol].legend(fontsize=legtextsize, loc='best') 
+    #fig.canvas.draw()
+    return
 
 def plotss(plot_mol,xparval,ss):
     fig,axes=pyplot.subplots(len(plot_mol), 1,sharex=True)

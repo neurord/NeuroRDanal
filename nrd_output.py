@@ -185,7 +185,7 @@ class nrdh5_output(object):
         for imol,mol in enumerate(self.molecules):
             outputline=mol.rjust(14)
             if self.spinelist:
-                if len(self.spinelist)>1 and self.stim_spine_index>-1:
+                if len(self.spinelist)>1 and self.stim_spine_index!=-1: 
                     headmean=[np.mean(np.mean(self.means['spines'][mol][:,self.sstart[mol]:self.ssend[mol],sp],axis=1),axis=0) for sp in self.stim_spine_index]
                     headmax=[np.mean(np.max(self.means['spines'][mol][:,self.ssend[mol]:,sp],axis=1),axis=0) for sp in self.stim_spine_index]
                 else:

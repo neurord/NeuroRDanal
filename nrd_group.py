@@ -159,7 +159,7 @@ class nrdh5_group(object):
                         self.mean_feature[feat][imol,parnum]=np.nanmean(self.feature_dict[feat][imol,parnum,:])
                         self.std_feature[feat][imol,parnum]=np.nanstd(self.feature_dict[feat][imol,parnum,:])
 
-    def write_features(self,feature_list,arg0):    
+    def write_features(self,feature_list,arg0,write_trials=False):    
         outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'.txt'  #test whether this works for single file      
         if len(self.ftuples)==1:
             outputdata=arg0
@@ -174,5 +174,18 @@ class nrdh5_group(object):
         f.write(header+'\n')        
         np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
         f.close() 
+
+        #write individual trials
+        if write_trials:
+            for imol,mol in enumerate(self.molecules):
+                outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
+                params=[ftuple[1] for ftuple in self.ftuples]
+                output_data=np.column_stack((params,self.feature_dict[feat][imol,:,:]/ms_to_sec))
+                header='param '+' '.join(['trial'+str(n) for n in range (np.shape(self.feature_dict[feat])[2])])
+                f=open(outfname, 'w')
+                f.write(header+'\n')        
+                np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
+                f.close() 
+
 
 
