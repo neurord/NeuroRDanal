@@ -152,8 +152,12 @@ def argparse(args):
     if len(fnames)==0:
         print("FILES:", *glob.glob(subdir+'/'+'*.h5'), sep='\n')
         raise IOError("no files found")
-
-   
+    if len(params)==1: #after reading in files, re-define params if using on parameter with wildcard embedded
+        star=str.find(args[1],'*')
+        if star>=1:
+            params[0]=args[1].split('*')[0]
+            
+    parlist=[]
     if len(args[1]):
         ftuples,parlist=file_tuple(fnames,params)
         ftuples = sorted(ftuples, key=lambda x:x[1])

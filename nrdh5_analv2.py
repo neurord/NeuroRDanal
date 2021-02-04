@@ -34,17 +34,17 @@ num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is o
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
-output_auc=1 #one file per molecule per set of input files
-showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
+output_auc=1#one file per molecule per set of input files
+showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
-print_head_stats=1
-textsize=14
-feature_list=[]#['auc']#,'amplitude']
+print_head_stats=0
+textsize=12
+feature_list=['auc']#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
-write_trials=0
+write_trials=True#True
 
 #for totaling subspecies, the default outputset is _main_, 
 #can specify outset= something (line 84) to use different outputset
@@ -121,8 +121,7 @@ for fnum,ftuple in enumerate(og.ftuples):
 og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time)
 
 if len(feature_list):
-    og.write_features(feature_list,args[0])
-
+    og.write_features(feature_list,args[0],write_trials)
 #################
 #print all the features in nice format.
 features=[k[0:7] for k in og.feature_dict.keys()]
@@ -135,6 +134,7 @@ for fnum,ftuple in enumerate(og.ftuples):
         else:
             outputvals.append('inf')
         print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals))
+
 
 ######################### Plots
 if showplot:
