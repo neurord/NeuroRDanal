@@ -182,7 +182,7 @@ class nrdh5_group(object):
             for imol,mol in enumerate(self.molecules):
                 outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
                 params=[ftuple[1] for ftuple in self.ftuples]
-                output_data=np.column_stack((params,self.feature_dict[feat][imol,:,:]/ms_to_sec))
+                output_data=np.column_stack((params,np.round(self.feature_dict[feat][imol,:,:]/ms_to_sec,5)))
                 header='param '+' '.join(['trial'+str(n) for n in range (np.shape(self.feature_dict[feat])[2])])
                 f=open(outfname, 'w')
                 f.write(header+'\n')        

@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 from matplotlib import pyplot
 
-legtextsize=15
+legtextsize=9
      
 colors=pyplot.get_cmap('viridis')
 #colors=pyplot.get_cmap('plasma')

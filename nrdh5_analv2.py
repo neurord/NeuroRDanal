@@ -33,42 +33,43 @@ window_size=0.1  #number of msec on either side of peak value to average for max
 num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
-write_output=0 #one file per molecules per input file
-output_auc=1#one file per molecule per set of input files
+write_output=1 #one file per molecules per input file
+output_auc=0#one file per molecule per set of input files
 showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
 print_head_stats=0
-textsize=12
-feature_list=['auc']#,'amplitude']
+textsize=10
+feature_list=[]#['auc']#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
-write_trials=True#True
+write_trials=False#True
 
 #for totaling subspecies, the default outputset is _main_, 
 #can specify outset= something (line 84) to use different outputset
 
 sub_species={'ras':['rasGap','RasGTPGap'], 
              'rap':['rap1Gap', 'Rap1GTPGap'],
-             'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],
-             'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],
+             'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],
+             'Rap':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','Rap1GDP','EpacRap1','CRKC3GpCblRap1','Rap1SynGap','Rap1pSynGap'],
              'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 
+             'epac':['Epac','EpacAMP','EpacRap1'],
              'erk':['ppERK','pERK'], 
              'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 
              'RasSyn':['RasSynGap', 'RaspSynGap'], 
              'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],
              'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 
-             'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'], 
-             'free_Syn':['SynGap', 'pSynGap'],
-             'CamCa':['CamCa4','CamCa2C','CamCa2N','PP2BCamCa2C','PP2BCamCa2N', 'PP2BCamCa4']}
+             'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'],
+             'GRF':['RasGRF', 'CamCa4GRF','CamCa4GRFRas'],
+             'free_Syn':['SynGap', 'pSynGap'],'CamCa':['CamCa4','CamCa2C','CamCa2N','PP2BCamCa2C','PP2BCamCa2N', 'PP2BCamCa4']}
 
 #subspecies of tot_species do NOT need to be specified as plot_molecules 
 #sub_species={'syn_act':['RasSynGap', 'RaspSynGap','Rap1SynGap', 'Rap1pSynGap','SynGap','pSynGap'],'syn_inact':['pSynden','CKpCamCa4SynGap'],'Rasgrf':['CamCa4GRFRas','CamCa4GRF'],'grf':['CamCa4GRF','CamCa4GRFRas'],'gef':['RasGTP','Rap1GTP']}
 #weights are multiplies for calculating weighted sum, i.e., signature
 #weight={'RasSynGap':-1, 'RaspSynGap':-1.4,'Rap1SynGap':-1, 'Rap1pSynGap':-1.9,'SynGap':-1,'pSynGap':-1.65,'pSynden':1,'CKpCamCa4SynGap':1}
 weight={}  #setting weight to empty dictionary will make all weights = 1
-tot_species=[]#'RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
+tot_species=[]#['ERK','Rap1','Ras','epac','GRF']#['ERK','erk']#'RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
 ############## END OF PARAMETERS #################
 try:
     args = ARGS.split(",")
