@@ -150,7 +150,8 @@ class nrdh5_group(object):
                                                           self.feature_dict['auc_thresh'][imol,parnum,:],
                                                           operator.lt)
                     if np.any(np.isnan(end_auc)):
-                        print ('*********',mol,' is not returning to basal, raise your threshold **********')
+                        print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
+                        self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:]-b)*self.dt[mol] for b in baseline]
                     else:
                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:end]-
                                                                         baseline[i])*self.dt[mol] for i,end in enumerate(end_auc)]
