@@ -87,6 +87,9 @@ def plot_setup(plot_molecules,data,num_spines,plottype):
                col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
                if plottype==2 and num_spines>1:
                    col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
+         elif len(data.trials)>1:
+             #if only a single file, check/use the number of trials
+             col_inc[i]=(len(colors.colors)-1)/(len(data.trials)-1)
          else:
                col_inc[i]=0.0
     return fig,col_inc,scale
@@ -120,7 +123,7 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
     print('***************','shape of axis', np.shape(axis))
     for (fname,param) in dataset.ftuples:
         #First, determine the color scaling
-        if len(dataset.parlist)==0:
+        if len(dataset.parlist)==0: #should this be dataset.ftuples?
             mycolor=[0,0,0]
             plotlabel=''
         else:
@@ -136,6 +139,9 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
             elif plottype==3:
+                #if len(ftuples)==1 and len(stimspines)==1:
+                #loop over data.trials and plot trials separately, as in line 154
+                #else:
                 for spnum,sp in enumerate(stimspines):
                     axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
                                         label=plotlabel,color=mycolor)
@@ -144,7 +150,12 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
                     axis[spnum][imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
                 
             else:
-                axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
+                if len(dataset.ftuples)==1:
+                    for t in range(len(dataset.trials)):
+                        mycolor=colors.colors[int(colinc[0]*t)]
+                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[param][mol][t][0:maxpoint],label='trial'+str(t),color=mycolor)
+                else:
+                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
             if plottype<3:
                 axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
                 axis[imol].tick_params(labelsize=textsize)

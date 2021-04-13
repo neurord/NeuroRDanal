@@ -28,6 +28,7 @@ class nrdh5_group(object):
 
     def conc_arrays(self,data):
         self.molecules=data.molecules
+        self.trials=data.trials
         #These are overwritten with each data file, but must be the same for each data file
         self.sstart={mol:data.sstart[mol] for mol in data.molecules}
         self.ssend={mol:data.ssend[mol] for mol in data.molecules}
