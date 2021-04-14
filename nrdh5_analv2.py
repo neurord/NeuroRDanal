@@ -33,18 +33,19 @@ window_size=0.1  #number of msec on either side of peak value to average for max
 num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
-write_output=1 #one file per molecules per input file
+write_output=0 #one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
 showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
 print_head_stats=0
 textsize=10
-feature_list=[]#['auc']#,'amplitude']
+feature_list=['auc']#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 write_trials=False#True
+aucend=None#end of traces for auc 
 
 #for totaling subspecies, the default outputset is _main_, 
 #can specify outset= something (line 84) to use different outputset
@@ -119,14 +120,14 @@ for fnum,ftuple in enumerate(og.ftuples):
 #other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=1
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
-og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time)
+og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31)
 
 if len(feature_list):
     og.write_features(feature_list,args[0],write_trials)
 #################
 #print all the features in nice format.
 features=[k[0:7] for k in og.feature_dict.keys()]
-print("file-params       molecule " +' '.join(features)+' ratio')
+print("file-params       molecule " +' '.join(features)+' ratio   CV')
 for fnum,ftuple in enumerate(og.ftuples):
     for imol,mol in enumerate(og.molecules+og.tot_species):
         outputvals=[str(np.round(odict[imol,fnum],3)) for feat,odict in og.mean_feature.items()]
@@ -134,7 +135,7 @@ for fnum,ftuple in enumerate(og.ftuples):
             outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum]/og.mean_feature['baseline'][imol,fnum],2)).rjust(8))
         else:
             outputvals.append('inf')
-        print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals))
+        print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals),np.std(og.feature_dict['auc'][imol,fnum])/og.mean_feature['auc'][imol,fnum])
 
 
 ######################### Plots

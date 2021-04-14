@@ -46,7 +46,7 @@ showpairs=0
 show_inject=0
 print_head_stats=0
 #outputavg determines whether output files are written
-outputavg=1
+outputavg=0
 outputauc=0
 showplot=1    #2 indicates plot the head conc, 0 means no plots
 stimspine='sa1[0]' #"name" of (stimulated) spine
@@ -57,9 +57,9 @@ basestarttime=2200
 
 #Example of how to total some molecule forms; turn off with tot_species={}
 #No need to specify subspecies if uniquely determined by string
-sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 'erk':['ppERK','pERK'], 'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 'RasSyn':['RasSynGap', 'RaspSynGap'], 'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 'Ca':['Ca'],'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'], 'free_Syn':['SynGap', 'pSynGap']}
+sub_species={'ras':['rasGap','RasGTPGap'], 'rap':['rap1Gap', 'Rap1GTPGap'],'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],'Rap1GTP':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'],'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 'erk':['ppERK','pERK'], 'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 'RasSyn':['RasSynGap', 'RaspSynGap'], 'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 'Ca':['Ca'],'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'], 'free_Syn':['SynGap', 'pSynGap'],'inac_Syn':['pSynden','CKpCamCa4SynGap'],'Gef_Syn':['RasSynGap','Rap1SynGap']}
 
-tot_species=[]
+tot_species=[]#['inac_syn','Gef_Syn','pSynGap','RaspSynGap','Rap1pSynGap','pSynden','CKpCamCa4SynGap']
 
 #molecules that we want to check if there is any correlation by plotting them together 
 mol_pairs=[['ppERK','Ca'], ['ppERK','CKpCamCa4'],['cAMP','ppERK']]
@@ -421,11 +421,12 @@ for pnum in range(arraysize):
         end_slopept=0
         found=0
         #
-        
+        '''       
         if len(params)==2:
-            stim_time=int(float(parval[pnum][-1])*3/dt[imol]+ssend[imol])#get previous to last stimuation time
+            stim_time=int(float(parval[pnum][0])*3/dt[imol]+ssend[imol])#get previous to last stimuation time
         else:
             stim_time=int(float(parval[pnum])*3/dt[imol]+ssend[imol])
+        '''        
         stim_time=int(ssend[imol])# comment this one when we want to use LTP 
         end_auc=np.zeros(len(trials))
         tempauc=np.zeros(len(trials))
@@ -439,7 +440,7 @@ for pnum in range(arraysize):
             peakpt_auc=auc_array[imol][pnum][trialnum][ssend[imol]:].argmax()+ssend[imol]
             peakpt_stim=auc_array[imol][pnum][trialnum][stim_time:].argmax()+stim_time
             peak[imol,pnum,trialnum]=auc_array[imol][pnum][trialnum][peakpt_auc-window:peakpt_auc+window].mean()
-            peak_mean[imol,pnum]=peak[imol,pnum].mean()
+            peak_mean[imol,pnum]=(peak[imol,pnum]-baseline_auc[imol][pnum]).mean()
             peak_std[imol,pnum]=peak[imol,pnum].std()
             belowthresh_auc=np.where(auc_array[imol][pnum][trialnum][peakpt_stim:]<auc_thresh[imol][pnum][trialnum])[0]+peakpt_stim
             if len(belowthresh_auc):

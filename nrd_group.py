@@ -54,14 +54,14 @@ class nrdh5_group(object):
                 self.dt[sp]=data.dt[sp]
                 self.endtime[data.parval][sp]=data.endtime[sp]
         
-    def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0):
+    def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None):
         import operator
         self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau']
         self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples),len(trials))) for feat in self.feature_list}
         self.mean_feature={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples))) for feat in self.feature_list}
         self.std_feature={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples))) for feat in self.feature_list}
 
-        def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoints=[-1 for t in trials]):
+        def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoints=[-1 for t in trials],filt_length=0):
             #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold
             #relate is either > (operator.gt) or < (operator.lt)
             #need to replace np.min with function in case want to find latest point
@@ -69,7 +69,12 @@ class nrdh5_group(object):
             earliest_points=[np.nan for i in startpoints]
             for i,(sp,t,endpt) in enumerate(zip(startpoints,thresh,endpoints)):
                 if not np.isnan(sp):
-                    pointset=np.where(relate(traces[i,sp:endpt],t))[0]+sp
+                    if filt_length>0:
+                        mov_avg_filt=np.ones(filt_length)/filt_length
+                        newtraces=np.convolve(mov_avg_filt,traces[i],'same')
+                    else:
+                        newtraces=traces[i]
+                    pointset=np.where(relate(newtraces[sp:endpt],t))[0]+sp
                     if len(pointset):
                         earliest_points[i]=np.min(pointset)
             return earliest_points
@@ -117,7 +122,7 @@ class nrdh5_group(object):
                     #could also use thresholds defined by lo_thresh or hi_thresh
                     midpoints=0.5*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:]
                     start_platpt=exceeds_thresh_points(traces[par][mol],ssend_list, midpoints,operator.gt)
-                    end_platpt=exceeds_thresh_points(traces[par][mol],peakpt,midpoints,operator.gt)
+                    end_platpt=exceeds_thresh_points(traces[par][mol],peakpt,midpoints,operator.gt,filt_length=filt_length)
                     self.feature_dict['start_plateau'][imol,parnum,:]=[platpt*self.dt[mol] for platpt in start_platpt]
                     #print('plateau',self.feature_dict['start_plateau'][imol,parnum,:],end_platpt)
                     self.feature_dict['duration'][imol,parnum,:]=[(end-start)*self.dt[mol] 
@@ -148,10 +153,10 @@ class nrdh5_group(object):
                                                           operator.lt,peakpt_stim)
                     end_auc=exceeds_thresh_points(traces[par][mol],peakpt_stim,
                                                           self.feature_dict['auc_thresh'][imol,parnum,:],
-                                                          operator.lt)
-                    if np.any(np.isnan(end_auc)):
+                                                          operator.lt,filt_length=filt_length)
+                    if np.any(np.isnan(end_auc))or aucend is not None:
                         print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
-                        self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:]-b)*self.dt[mol] for b in baseline]
+                        self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:aucend]-b)*self.dt[mol] for b in baseline]
                     else:
                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:end]-
                                                                         baseline[i])*self.dt[mol] for i,end in enumerate(end_auc)]
