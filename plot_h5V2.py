@@ -83,15 +83,17 @@ def plot_setup(plot_molecules,data,num_spines,plottype):
     col_inc=[0.0,0.0]
     scale=['lin','lin']
     for i,paramset in enumerate(data.parlist):
-         if len(paramset)>1:
-               col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
-               if plottype==2 and num_spines>1:
-                   col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
-         elif len(data.trials)>1:
-             #if only a single file, check/use the number of trials
-             col_inc[i]=(len(colors.colors)-1)/(len(data.trials)-1)
-         else:
-               col_inc[i]=0.0
+        if len(paramset)==1 and plottype==2 and num_spines>1:
+            col_inc[i]=(len(colors.colors)-1)/num_spines
+        elif len(paramset)>1:
+            col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
+            if plottype==2 and num_spines>1:
+                col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
+        elif len(data.trials)>1:
+            #if only a single file, check/use the number of trials
+            col_inc[i]=(len(colors.colors)-1)/(len(data.trials)-1)
+        else:
+            col_inc[i]=0.0
     return fig,col_inc,scale
 
 def get_color_label(parlist,params,colinc):
