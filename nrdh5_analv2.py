@@ -3,8 +3,8 @@
 Created on Thu Apr 23 10:58:05 2020
 
 @author: kblackw1
+#from outside python, type python nrdh5_analv2,py subdir/fileroot "par1 par2" "mol1 mol2" "sstart ssend"
 in python window, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,sstart ssend,rows" then execfile('path/to/file/nrdh5_anal.py')
-#from outside python, type python nrdh5_analv2,py "subdir/fileroot [par1 par2] [mol1 mol2] [sstart ssend]"
 #DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS, rows is optional
 #mol1 mol2, etc are the names of molecles to process
 #par1 and optionally par2 are specifications of parameter variations, as follows:
@@ -129,7 +129,7 @@ if len(feature_list):
 features=[k[0:7] for k in og.feature_dict.keys()]
 print("file-params       molecule " +' '.join(features)+' ratio   CV')
 for fnum,ftuple in enumerate(og.ftuples):
-    for imol,mol in enumerate(og.molecules+og.tot_species):
+    for imol,mol in enumerate(list(og.molecules)+og.tot_species):
         outputvals=[str(np.round(odict[imol,fnum],3)) for feat,odict in og.mean_feature.items()]
         if og.mean_feature['baseline'][imol,fnum]>1e-5:
             outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum]/og.mean_feature['baseline'][imol,fnum],2)).rjust(8))
