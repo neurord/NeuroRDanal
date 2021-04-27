@@ -32,7 +32,7 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
                 sstart[mol] = int(np.round(float(args.split(" ")[0]) / dt[mol]))
                 ssend[mol] = int(np.round(float(args.split(" ")[1]) / dt[mol]))
                 if ssend[mol]>0.5*rows[imol]:
-                    print("WARNING*******. Possible SS time issue: only", rows, "rows")
+                    print("WARNING*******. Possible SS time issue for",mol,": only", rows[imol], "rows")
                 if ssend[mol]>rows[imol]:
                     ssend[mol]=0.1*rows[imol]
                     sstart[mol]=0.075*rows[imol]
