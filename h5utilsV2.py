@@ -61,11 +61,10 @@ def get_mol_info(simData,plot_molecules):
                     dt[molecule]=simData['trial0']['output'][outset]['times'][1]/ms_to_sec #convert msec to sec
                     tot_voxels=tot_voxels+len(simData['model']['output'][outset]['elements'])
                     temp_dict[outset]={'mol_index':mol_index,'elements':simData['model']['output'][outset]['elements'][:]}
-        if len(temp_dict)>0:
-            out_location[molecule]={'samples':samples[imol],'dt':dt[molecule],'voxels': tot_voxels,'location': temp_dict}
-        else:
-            out_location[molecule]=-1
-            print("** MOLECULE", molecule, " DOES NOT EXIST !!!!!!!!!!!!!")
+        #if len(temp_dict)>0:
+        out_location[molecule]={'samples':samples[imol],'dt':dt[molecule],'voxels': tot_voxels,'location': temp_dict}
+        #else:
+        #    out_location[molecule]=-1            
     return out_location,dt,samples
          
 def get_mol_index(simData,outputset,molecule):

@@ -54,7 +54,11 @@ class nrdh5_output(object):
         #which columns in the data set contain counts of molecules of interest
         self.all_molecules=h5utils.decode(self.data['model']['species'][:])
         if molecules is not None:
-             self.molecules = [mol for mol in molecules if mol in self.all_molecules]               
+             self.molecules = [mol for mol in molecules if mol in self.all_molecules]
+             missing_molecules=[mol for mol in molecules if mol not in self.all_molecules]
+             if len(missing_molecules):
+                 print("** MOLECULE", missing_molecules, " DOES NOT EXIST !!!!!!!!!!!!!")
+                 print('choose from',self.all_molecules)
         else:
             self.molecules=self.all_molecules 
         out_location,dt,rows=h5utils.get_mol_info(self.data, self.molecules)
@@ -146,7 +150,7 @@ class nrdh5_output(object):
                 arg=None
             sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,arg)
             if len(np.unique(list(dt.values())))>1:
-                print('PROBLEM, cannot total subspecies with different dt',dt)
+                print('PROBLEM, cannot total subspecies for',mol,' with different dt',dt)
             else:
                 dt=np.mean(list(dt.values()))
                 self.endtime={mol:(rows[0]-1)*dt for mol in tot_species}
@@ -168,6 +172,7 @@ class nrdh5_output(object):
                             mol_pop=self.data[trial]['output'][outname]['population'][:,:,outset['mol_index']] # FIXME won't work if > 1 outset
                     else:
                         mol_pop=self.counts[subspecie][trialnum]
+                    #print('tot_species',mol,subspecie,np.shape(mol_pop),np.shape(self.ss_tot[mol][trialnum]))
                     self.ss_tot[mol][trialnum]+=wt*np.sum(mol_pop,axis=1)/self.TotVol/mol_per_nM_u3
                     #then total sub_species in submembrane and spine head, if they exist
                     if self.dsm_vox:
