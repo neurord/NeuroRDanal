@@ -178,7 +178,7 @@ class nrdh5_group(object):
         else:
             outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
             header='-'.join([i for i in self.params])+'  '
-        header+=' '.join([m+'_'+f+'_mean ' + m+'_'+f+'_std 'for m in self.molecules for f in feature_list])
+        header+=' '.join([m+'_'+f+'_mean ' + m+'_'+f+'_std 'for m in self.molecules+self.tot_species for f in feature_list])
         for feat in feature_list:
             outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat].T/ms_to_sec,3),np.round(self.std_feature[feat].T/ms_to_sec,3)))
         f=open(outfname, 'w')
