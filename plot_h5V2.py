@@ -195,7 +195,7 @@ def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
         for col,(mol,trace) in enumerate(ss_tot.items()): 
             #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
             ax=col+row*numrows
-            newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1])/ms_to_sec #convert from ms to sec
+            newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
             axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
             axis[ax].set_title(mol+' TOTAL',fontsize=textsize)
             axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
