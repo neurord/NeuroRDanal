@@ -104,7 +104,7 @@ class nrdh5_group(object):
                                                                 for i,p in enumerate(lowpt)]
                     self.feature_dict['amplitude'][imol,parnum,:]=self.feature_dict['peakval'][imol,parnum,:]-self.feature_dict['baseline'][imol,parnum,:]
                     ####################
-                    #FIND SLOPE OF INCREASE using - Use thresholds defined by lo_thresh, and hi_thresh, e.g. 20 and 80%
+                    #FIND SLOPE OF INCREASE - Use thresholds defined by lo_thresh, and hi_thresh, e.g. 20 and 80%
                     lo_thresh=lo_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:] #get the 5% above the max value
                     hi_thresh=hi_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:]
                     ssend_list=[self.ssend[mol] for t in trials]
@@ -154,9 +154,12 @@ class nrdh5_group(object):
                     end_auc=exceeds_thresh_points(traces[par][mol],peakpt_stim,
                                                           self.feature_dict['auc_thresh'][imol,parnum,:],
                                                           operator.lt,filt_length=filt_length)
-                    if np.any(np.isnan(end_auc))or aucend is not None:
-                        print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
-                        self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:aucend]-b)*self.dt[mol] for b in baseline]
+                    if aucend is not None:
+                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol] for b in baseline]
+                         print('end_auc',end_auc,'specified end auc',aucend)
+                    elif np.any(np.isnan(end_auc)):
+                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:]-b)*self.dt[mol] for b in baseline]
+                         print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
                     else:
                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:end]-
                                                                         baseline[i])*self.dt[mol] for i,end in enumerate(end_auc)]
