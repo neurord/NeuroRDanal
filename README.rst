@@ -2,7 +2,7 @@
 NeuroRDanal
 ===========
 
-**1. nrdh5_anal.py**
+**1. nrdh5_analv2.py**
 ---------------------
 
 Processes hdf5 output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. To process multiple files, the first part of file name must be the same for all files, and parameter variations are specified as -par1-par2.  In addition, the set of files MUST use the same morphology file and MUST use the same discretization (specified in the top level model file).  If the set of files differ in morphology, then each file must be processed separately.
@@ -14,13 +14,13 @@ To run the program from within python, type
 
 .. code-block::
 
-ARGS="subdir/fileroot,par1 par2,mol1 mol2,basal_start basal_end" then execfile('nrdh5_anal.py')
+ARGS="subdir/fileroot,par1 par2,mol1 mol2,basal_start basal_end" then execfile('nrdh5_analv2.py')
 
 from outside python, type 
 
 .. code-block::
 
-python nrdh5_anal "subdir/fileroot [par1 par2] [mol1 mol2] [basal_start basal_send]"
+python nrdh5_analv2 "subdir/fileroot [par1 par2] [mol1 mol2] [basal_start basal_send]"
 
 DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS
  - mol1 mol2, etc are the names of molecles to process
@@ -33,10 +33,35 @@ Other parameters to adjust in program
 
 1. outputavg - set to 1 to create region average output files to read into your favorite graphin software
 2. showplot - set to 2 to plot the spine head concentration
-3. stimspine - this should be the name of the spine head you want to plot with showplot=2
-4. spinehead - this should be the name of your spinehead region
+3. stimspine - list of spine heads that received stimulation
+4. spinehead - name of your spinehead region (from morphology file)
+5. dendname - name of your dendrite (from morphology file)
+6. num_LTP_stim - number of LTP trains - used to determine when stimulation is over for calculating area under the curve
+7.  mol_pairs - list of lists, to generate plots of one molecule versus another parameterized by time
+8.  pairs_timeframe - to specifiy start and end time for the mol_pairs plots
+9. feature_list - specify list of features, such as AUC or amplitude, to plot versus parameter
 
-**2. sig.py**
+**2. nrd_output.py**
+---------------------
+
+Class file for analyzing a single NeuroRD output file.  Determines which voxels are part of which region or structure, e.g. dendrite, spine, submembrane, and then calculates molecule concentration for each region or structure.
+
+**3. nrd_group.py**
+---------------------
+
+Class file for analyzing a set of NeuroRD output files.  Extracts features such as peak amplitude, area under the curve (AUC), minimum value, plateau, baseline
+
+**4. plot_h5V2.py**
+---------------------
+
+Utilities used by nrdh5_analv2.pycreating graphs
+
+**5. h5utilsV2.py**
+---------------------
+
+Utilities used by nrdh5_analv2.py for creating region averages
+
+**6. sig.py**
 ---------------------
 Calculate LTP/LTD signature from two sets of molecules, separately for spines and dendrites, by adding together the specified molecules, and then calculating area under the curve (and above the specified thresholds)
 
@@ -62,17 +87,17 @@ python sig.py "subdir/fileroot [par1 par2] [LTPmol1 LTPmol2] [LTDmol1 LTdmol2] [
   - LTDmol1 LTDmol2, etc are the names of molecles which produce LTD is sufficiently high (and hinder LTP)
   - T_LTPd T_LTPsp T_LTDd T_LTDsp are thresholds - defining "sufficiently high"
 
-**3. plot_h5.py**
+**7. plot_h5.py**
 ---------------------
 
-Utilities used by nrdh5_anal.py and sig.py for creating graphs
+Utilities used by sig.py for creating graphs
 
-**4. h5utils.py**
+**8. h5utils.py**
 ---------------------
 
-Utilities used by nrdh5_anal.py and sig.py for creating region averages
+Utilities used by sig.py for creating region averages
 
-**5. neurord_analysis.py**
+**9. neurord_analysis.py**
 ---------------------------
 Processes text file output from NeuroRDv3 to produce graphs of molecules for one or more files, which use same morphology but can have different other parameters. In other words, the set of files MUST use the same morphology file and MUST use the same discretization (specified in the top level model file).  If the set of files differ in morphology, then each file must be processed separately. Don't use this unless you can't get the hdf5 output to work. 
 
@@ -96,14 +121,30 @@ DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS
   - DO NOT use hyphens in filenames except for preceding parameter name
   - if no parameters specified, then fileroot needs to be full filename (excluding the .txt extension)
 
-**6.header_parse.py**
+**10.header_parse.py**
 ---------------------
 Utilities used by neurord_analysis for reading the first header line and determining which columns of data belong to which molecule, which voxel, and which region of the morphology.
 
-**7. plot_utils.py**
+**11. plot_utils.py**
 --------------------
 Utilities used by neurord_analysis for plotting the NeuroRD output
 
-**8. sig2.py**
+**12. sig2.py**
 ---------------
 Program to read in the text file outputs of sig.py and generate a file of molecule-space-time samples - one line per file - for statistical analysis.  Alternatively, generate signature traces (normalized sum of a subset of the molecules) and plot them.
+
+**13. UpdateIC_basal_spatial.py**
+---------------
+
+Create an IC file (initial conditions) from an h5 file, presumably simulated with stimulation to find the steady state.  Parameters:
+
+- name of .h5 file (without the file extension)
+- 'start_time end_time' specify the time frame for obtaining average concentration
+- IC_file - name of initial condition file to update (without the file extension)
+- Rxn_file - name of reaction file (without the file extension).  Used to determine which specifies diffuse
+
+ .. code-block::
+    
+python3 UpdateIC_basal_spatial.py h5file '' ''  'start_time eend_time' IC_file Rxn_file
+
+two empty strings are required because it uses the same arg parser as nrdh5_analv2.py
