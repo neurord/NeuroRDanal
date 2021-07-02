@@ -54,7 +54,7 @@ Class file for analyzing a set of NeuroRD output files.  Extracts features such 
 **4. plot_h5V2.py**
 ---------------------
 
-Utilities used by nrdh5_analv2.pycreating graphs
+Utilities used by nrdh5_analv2.py for creating graphs
 
 **5. h5utilsV2.py**
 ---------------------
