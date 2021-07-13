@@ -9,8 +9,8 @@ from NeuroRDanal import h5utilsV2 as h5utils
 
 ms_to_sec=1000
 class nrdh5_group(object): 
-    def __init__(self,args,tot_species=[]):
-        self.ftuples,self.parlist,self.params=h5utils.argparse(args)
+    def __init__(self,fileroot,parameters,tot_species=[]):
+        self.ftuples,self.parlist,self.params=h5utils.create_filenames(fileroot,parameters)
         self.file_set_conc={k[1]:{} for k in self.ftuples} 
         self.time_set={k[1]:{} for k in self.ftuples}
         self.spatial_means={k[1]:{} for k in self.ftuples}
@@ -18,13 +18,11 @@ class nrdh5_group(object):
         self.regions_structure_means={k[1]:{} for k in self.ftuples}
         self.spine_means={k[1]:{} for k in self.ftuples}
         if len(tot_species):
-            #Expand this to include spine_means and other spatial information
-            self.file_set_tot={k[1]:{sp:[] for sp in tot_species} for k in self.ftuples}
             self.tot_species=tot_species
-            self.endtime={k[1]:{sp:[] for sp in tot_species} for k in self.ftuples}
+            self.endtime={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
         else:
             self.tot_species=[]
-            self.file_set_tot={}
+        self.file_set_tot={'Overall':{}}
 
     def conc_arrays(self,data):
         self.molecules=data.molecules
@@ -45,14 +43,15 @@ class nrdh5_group(object):
                     self.spine_means[data.parval][molecule]=data.means['spines'][molecule]
             else:
                 self.spatial_data=None
-        if len(data.ss_tot):
-            #Expand this to include spine_means and other spatial information
-            for imol,sp in enumerate(self.file_set_tot[data.parval].keys()):
-                self.file_set_tot[data.parval][sp]=data.ss_tot[sp][:,:]
-                self.sstart[sp]=data.sstart[sp]
-                self.ssend[sp]=data.ssend[sp]
-                self.dt[sp]=data.dt[sp]
-                self.endtime[data.parval][sp]=data.endtime[sp]
+        if len(self.tot_species):
+            for region in data.total_trace.keys():
+                self.file_set_tot[region]={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
+                for imol,sp in enumerate(self.file_set_tot[region][data.parval].keys()):
+                    self.file_set_tot[region][data.parval][sp]=data.total_trace[region][sp][:,:]
+                    self.sstart[sp]=data.sstart[sp]
+                    self.ssend[sp]=data.ssend[sp]
+                    self.dt[sp]=data.dt[sp]
+                    self.endtime[data.parval][sp]=data.endtime[sp]
         
     def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None):
         import operator
@@ -78,7 +77,7 @@ class nrdh5_group(object):
                     if len(pointset):
                         earliest_points[i]=np.min(pointset)
             return earliest_points
-        for ii,(molecules,traces) in enumerate(zip([self.molecules,self.tot_species],[self.file_set_conc,self.file_set_tot])):
+        for ii,(molecules,traces) in enumerate(zip([self.molecules,self.tot_species],[self.file_set_conc,self.file_set_tot['Overall']])):
             for parnum,(fname,par) in enumerate(self.ftuples):
                 for jmol,mol in enumerate(molecules):
                     imol=jmol+ii*len(self.molecules)
@@ -171,14 +170,14 @@ class nrdh5_group(object):
 
     def write_features(self,feature_list,arg0,write_trials=False):
         outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'.txt'  #test whether this works for single file
-        #print('in write_features',outfname, feature_list)
+        print('in write_features',outfname, feature_list)
         if len(self.ftuples)==1:
             outputdata=arg0
             header='file      ' 
         else:
             outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
             header='-'.join([i for i in self.params])+'  '
-        header+=' '.join([m+'_'+f+'_mean ' for m in self.molecules+self.tot_species for f in feature_list]+ [m+'_'+f+'_std ' for m in self.molecules+self.tot_species for f in feature_list])
+        header+=' '.join([m+'_'+f+'_mean ' for m in list(self.molecules)+self.tot_species for f in feature_list]+ [m+'_'+f+'_std ' for m in list(self.molecules)+self.tot_species for f in feature_list])
         for feat in feature_list:
             outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat].T/ms_to_sec,3),np.round(self.std_feature[feat].T/ms_to_sec,3)))
         f=open(outfname, 'w')

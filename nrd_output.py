@@ -50,7 +50,7 @@ class nrdh5_output(object):
         if any(v==0 for v in vol):
             print ("**********Too many bins for spatial average****************")
 #
-    def rows_and_columns(self,molecules,args):
+    def rows_and_columns(self,molecules,start_end):
         #which columns in the data set contain counts of molecules of interest
         self.all_molecules=h5utils.decode(self.data['model']['species'][:])
         if molecules is not None:
@@ -65,12 +65,8 @@ class nrdh5_output(object):
         self.out_location=out_location
         self.dt=dt
         self.rows=rows
-        if len(args)>3: 
-            arg=args[3]
-        else:
-            arg=None
-        #Which "rows" should be used for baseline value, specifed in args[3].  If different for each file then will have problems later
-        sstart,ssend=h5utils.sstart_end(self.molecules,self.out_location,self.dt,self.rows,arg)
+        #Which "rows" should be used for baseline value. If different for each file then will have problems later
+        sstart,ssend=h5utils.sstart_end(self.molecules,self.out_location,self.dt,self.rows,start_end)
         self.sstart=sstart
         self.ssend=ssend
         
@@ -107,10 +103,16 @@ class nrdh5_output(object):
 
     def write_average(self):
         import os ########### NEED TO PUT SPATIAL STUFF IN SEPARATE FILE?
-        for mol in self.molecules:
-            outfilename=os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'            
-            output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
-            output_std=np.std(self.OverallMean[mol],axis=0)
+        for mol in list(self.molecules)+list(self.tot_species.keys()):
+            outfilename=os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
+            if mol in self.molecules: 
+                output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
+                output_std=np.std(self.OverallMean[mol],axis=0)
+                time=self.time[mol]
+            elif mol in self.tot_species.keys():
+                output_means=np.mean(self.total_trace['Overall'][mol],axis=0)
+                output_std=np.std(self.total_trace['Overall'][mol],axis=0)
+                time=np.linspace(0,self.endtime[mol], len(output_means))
             mean_header=mol+'_'.join([str(q) for q in self.parval])+'_All '
             if self.maxvols>1:
                 for mean_dict in self.means.values():
@@ -123,18 +125,18 @@ class nrdh5_output(object):
             #print(outfilename,output_header)
             f=open(outfilename, 'w')
             f.write(output_header)
-            np.savetxt(f, np.column_stack((self.time[mol],output_means,output_std)), fmt='%.4f', delimiter=' ')
+            np.savetxt(f, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ')
             f.close()
     #
     #FOR SIGNATURE:
     #add option to baseline subtract - separate function?
-    def total_subspecies(self,tot_species,sub_species,args,outset='__main__',weights={}):
+    def total_subspecies(self,tot_species,sub_species,start_end,outset='__main__',weights={}):
         self.tot_species={t:[] for t in tot_species}
-        self.ss_tot={}
+        self.total_trace={'Overall':{}}
         if self.dsm_vox:
-            self.dsm_tot={}
+            self.total_trace['dsm']={}
         if self.spinelist: 
-            self.head_tot={}
+            self.total_trace['spine']={}
         for imol,mol in enumerate(tot_species):
             mol_set=[];tot_wt=0
             #### first set up arrays of all species (sub_species) that are a form of the molecule
@@ -144,21 +146,17 @@ class nrdh5_output(object):
                 mol_set=[subsp for subsp in self.all_molecules if mol in subsp] #h5utils.decode(self.data['model']['output'][outset]['species'][:])
             self.tot_species[mol]=mol_set
             out_location,dt,rows=h5utils.get_mol_info(self.data, mol_set)
-            if len(args)>3: 
-                arg=args[3]
-            else:
-                arg=None
-            sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,arg)
+            sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,start_end)
             if len(np.unique(list(dt.values())))>1:
                 print('PROBLEM, cannot total subspecies for',mol,' with different dt',dt)
             else:
                 dt=np.mean(list(dt.values()))
                 self.endtime={mol:(rows[0]-1)*dt for mol in tot_species}
-            self.ss_tot[mol]=np.zeros((len(self.trials),rows[0]))
+            self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[0]))
             if self.dsm_vox:
-                self.dsm_tot[mol]=np.zeros((len(self.trials),rows[0]))
+                self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[0]))
             if self.spinelist: 
-                self.head_tot[mol]=np.zeros((len(self.trials),rows[0]))
+                self.total_trace['spine'][mol]=np.zeros((len(self.trials),rows[0]))
             #### second, find molecule index of the sub_species and total them
             for subspecie in mol_set:
                 self.dt[mol]=dt 
@@ -172,18 +170,18 @@ class nrdh5_output(object):
                             mol_pop=self.data[trial]['output'][outname]['population'][:,:,outset['mol_index']] # FIXME won't work if > 1 outset
                     else:
                         mol_pop=self.counts[subspecie][trialnum]
-                    #print('tot_species',mol,subspecie,np.shape(mol_pop),np.shape(self.ss_tot[mol][trialnum]))
-                    self.ss_tot[mol][trialnum]+=wt*np.sum(mol_pop,axis=1)/self.TotVol/mol_per_nM_u3
+                    #print('tot_species',mol,subspecie,np.shape(mol_pop),np.shape(self.total_trace['Overall'][mol][trialnum]))
+                    self.total_trace['Overall'][mol][trialnum]+=wt*np.sum(mol_pop,axis=1)/self.TotVol/mol_per_nM_u3
                     #then total sub_species in submembrane and spine head, if they exist
                     if self.dsm_vox:
-                        self.dsm_tot[mol][trialnum]+=wt*np.sum(mol_pop[:,self.dsm_vox['vox']],axis=1)/self.dsm_vox['vol']*self.dsm_vox['depth']/mol_per_nM_u3
+                        self.total_trace['dsm'][mol][trialnum]+=wt*np.sum(mol_pop[:,self.dsm_vox['vox']],axis=1)/self.dsm_vox['vol']*self.dsm_vox['depth']/mol_per_nM_u3
                     if self.spinelist: 
-                        self.head_tot[mol][trialnum]+=wt*np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)/self.region_dict[self.head]['vol']/mol_per_nM_u3
-            outputline=str(self.parval)+' TOTAL: '+str(np.round(self.ss_tot[mol][0,0],3))+' nM'
+                        self.total_trace['spine'][mol][trialnum]+=wt*np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)/self.region_dict[self.head]['vol']/mol_per_nM_u3
+            outputline=str(self.parval)+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
             if self.dsm_vox:
-                outputline +=',  sp: '+str(np.round(self.head_tot[mol][0,0],3))+' nM'
+                outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
             if self.spinelist:
-                outputline +=',  dsm: '+str(np.round(self.dsm_tot[mol][0,0],3))+' pSD'
+                outputline +=',  dsm: '+str(np.round(self.total_trace['dsm'][mol][0,0],3))+' pSD'
             print(outputline)
   
     def print_head_stats(self):

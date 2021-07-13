@@ -183,29 +183,28 @@ def plotss(plot_mol,xparval,ss):
 
 def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
     numcols=len(tot_species)
-    #Will need to specify whether plotting spine (and non-spine) totals, or perhaps region totals
-    #add additional total arrays in nrd_group
-    numrows= 1 #one row for each region  For now, there is only an overall sum
-    row=0 #once multiple rows, will loop over rows, and region as y label, mol as column heading?
+    #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
+    numrows= len(dataset.file_set_tot.keys()) 
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.set_window_title(figtitle+'Totals')
     axis=fig.axes
-    for i,(param,ss_tot) in enumerate(dataset.file_set_tot.items()):
-        mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
-        for col,(mol,trace) in enumerate(ss_tot.items()): 
-            #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
-            ax=col+row*numrows
-            newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
-            axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
-            axis[ax].set_title(mol+' TOTAL',fontsize=textsize)
-            axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
-            axis[ax].tick_params(labelsize=textsize)
-            axis[row*numrows].set_ylabel('Conc (nM)',fontsize=textsize)
-    axis[0].legend(fontsize=legtextsize, loc='best')
-    if len(thresholds): #this needs to be fixed.  Determine how to match thresholds to mol/sig
-        r=(1,0)[row==0]
-        axis[ax].plot([0,newtime[-1]],[thresholds[r],thresholds[r]],color='k',linestyle= 'dashed')
-        axis[ax+1].plot([0,newtime[-1]],[thresholds[r+numcols],thresholds[r+numcols]],color='k',linestyle= 'dashed')
+    for row,region in enumerate(dataset.file_set_tot.keys()):
+        for i,(param,total_trace) in enumerate(dataset.file_set_tot[region].items()):
+            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
+            for col,(mol,trace) in enumerate(total_trace.items()): 
+                #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
+                ax=col+row*numrows
+                newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
+                axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
+                axis[ax].set_title(mol+' TOTAL',fontsize=textsize)
+                axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
+                axis[ax].tick_params(labelsize=textsize)
+                axis[row*numrows].set_ylabel('Conc (nM)',fontsize=textsize)
+        axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
+        if len(thresholds): #this needs to be fixed.  Determine how to match thresholds to mol/sig
+            r=(1,0)[row==0]
+            axis[ax].plot([0,newtime[-1]],[thresholds[r],thresholds[r]],color='k',linestyle= 'dashed')
+            axis[ax+1].plot([0,newtime[-1]],[thresholds[r+numcols],thresholds[r+numcols]],color='k',linestyle= 'dashed')
     fig.canvas.draw()
 
 def tweak_fig(fig,yrange,legendloc,legendaxis,legtextsize):
