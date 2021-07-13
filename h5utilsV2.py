@@ -15,6 +15,27 @@ Avogadro=6.02214179e14 #to convert to nanoMoles
 mol_per_nM_u3=Avogadro*1e-15 #0.6022 = PUVC
 ms_to_sec=1000
 
+def parse_args(commandline,do_exit):
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('fileroot', type=str, help = 'give path/to/common_name of set of experiments')
+    parser.add_argument('-par',nargs="+",type=str,help='specify 1-2 parameter variations, filenames="subdir/fileroot"+"-"+par1+"*"-"+par2+"*"')
+    parser.add_argument('-mol',nargs="+",type=str,help='specify names of molecles to process')
+    parser.add_argument('-start',nargs='+', type=int,help='start and end time for calculating basal concentration')
+    parser.add_argument('-tot',type=str,help='filename with list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10')
+    parser.add_argument('-rows',type=int,help='number of rows to process, e.g., if simulation is still running')
+    parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
+    parser.add_argument('-write_trials',type=bool,help='whether to create a file with feature values for each trial',default=False)
+    try:
+        args = parser.parse_args(commandline) # maps arguments (commandline) to choices, and checks for validity of choices.
+        #if arguments are mapped incorrectly, python wants to exit, but the next line says "don't", instead check whether we are in python (do_exit=False) then don't exit, just give us a warning
+    except SystemExit:
+        if do_exit:
+            raise # raise the exception above (SystemExit) b/c none specified here
+        else:
+            raise ValueError('invalid ARGS')
+    return args
+
 def join_params(parval,params):
     if len(params)>1:
         label=parval.join('-')
@@ -29,8 +50,8 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
     if args is not None:
         for imol,mol in enumerate(molecule_list):
             if out_location[mol]!=-1:
-                sstart[mol] = int(np.round(float(args.split(" ")[0]) / dt[mol]))
-                ssend[mol] = int(np.round(float(args.split(" ")[1]) / dt[mol]))
+                sstart[mol] = int(np.round(float(args[0]) / dt[mol]))
+                ssend[mol] = int(np.round(float(args[1]) / dt[mol]))
                 if ssend[mol]>0.5*rows[imol]:
                     print("WARNING*******. Possible SS time issue for",mol,": only", rows[imol], "rows")
                 if ssend[mol]>rows[imol]:
@@ -94,7 +115,7 @@ def get_mol_pop(Data,mol):
             counts[trialnum,:,outset['elements']]=trialcounts.T
     return counts,time
 
-def argparse(args):
+def create_filenames(froot,params):
 
     def check_for_float(parlist):
         testset=[i for item in parlist for i in item ]
@@ -131,9 +152,9 @@ def argparse(args):
         return ftuples,parlist
 
     #1st and 2nd arguements used to construct pattern for reading in multiple files
-    pattern=args[0]
-    if len(args[1]):
-        params=args[1].split(" ")
+    pattern=froot
+    if params is not None:
+        print (params)
         for par in params:
             pattern=pattern+'-'+par+'*'
     else:
@@ -151,13 +172,13 @@ def argparse(args):
     if len(fnames)==0:
         print("FILES:", *glob.glob(subdir+'/'+'*.h5'), sep='\n')
         raise IOError("no files found")
-    if len(params)==1: #after reading in files, re-define params if using on parameter with wildcard embedded
-        star=str.find(args[1],'*')
+    if len(params)==1: #after reading in files, re-define params if using one parameter with wildcard embedded
+        star=str.find(params[0],'*')
         if star>=1:
-            params[0]=args[1].split('*')[0]
+            params[0]=params[0].split('*')[0]
             
     parlist=[]
-    if len(args[1]):
+    if len(params):
         ftuples,parlist=file_tuple(fnames,params)
         ftuples = sorted(ftuples, key=lambda x:x[1])
         if len(parlist[1]) or len(parlist[0]):

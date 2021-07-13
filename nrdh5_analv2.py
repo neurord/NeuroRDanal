@@ -3,18 +3,26 @@
 Created on Thu Apr 23 10:58:05 2020
 
 @author: kblackw1
-#from outside python, type python nrdh5_analv2,py subdir/fileroot "par1 par2" "mol1 mol2" "sstart ssend"
-in python window, type ARGS="subdir/fileroot,par1 par2,mol1 mol2,sstart ssend,rows" then execfile('path/to/file/nrdh5_anal.py')
-#DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS, rows is optional
-#mol1 mol2, etc are the names of molecles to process
-#par1 and optionally par2 are specifications of parameter variations, as follows:
-#The filenames to read in are constructed as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
-#DO NOT use hyphens in filenames except for preceding parameter name
+#from outside python, type python nrdh5_analv2,py subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file
+from within python, type 
+     ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
+     execfile('path/to/file/nrdh5_anal.py')
+
+#-par:
+#  par1 and optionally par2 are specifications of parameter variations, as follows:
+#  The filenames to read in are constructed as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
+#  DO NOT use hyphens in filenames except for preceding parameter name
+#-mol:
+#  mol1 mol2, etc are the names of molecules to process
+#  if mol ommitted, then all molecules processed.  if sstart ssend are ommitted, then calculates basal from 7.5-10% of runtime
+#-tot:
+#  tot_species_files containes a list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10
 #if no parameters specified, then fileroot needs to be full filename (excluding the extension)
+
 #e.g. ARGS="../Repo/plc/Model_PLCassay,Ca GaqGTP,Ca GaqGTP Ip3,15 20" time units are sec
 #e.g. ARGS="plc/Model_PLCassay_Ca1,Ca Gaq,GTP IP3"
-#if mol ommitted, then all molecules processed.  if sstart ssend are ommitted, then calculates basal from 7.5-10% of runtime
-additional parameters lines 27-45
+
+additional parameters lines 27-48
 """
 import numpy as np
 import sys
@@ -22,19 +30,19 @@ import sys
 from NeuroRDanal import plot_h5V2 as pu5
 from NeuroRDanal.nrd_output import nrdh5_output
 from NeuroRDanal.nrd_group import nrdh5_group
+from NeuroRDanal.h5utilsV2 import parse_args
 
-#probably add some of these to args with defaults once real arg parser is written
+#probably should add most of these to args with defaults 
 submembname='sub'
 dendname="dend"
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
-num_LTP_stim=1 #number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay
 #These control what output is printed or written
 show_inject=0
-write_output=0 #one file per molecules per input file
-output_auc=0#one file per molecule per set of input files
+write_output=1 #one file per molecules per input file
+output_auc=1#one file per molecule per set of input files
 showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
 print_head_stats=0
@@ -44,36 +52,11 @@ feature_list=['auc']#,'amplitude']
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
-write_trials=False#True
-aucend=None#end of traces for auc 
+aucend=None#600#end time for calculating auc, or None to calculate end time automatically
 
-#for totaling subspecies, the default outputset is _main_, 
-#can specify outset= something (line 84) to use different outputset
-
-sub_species={'ras':['rasGap','RasGTPGap'], 
-             'rap':['rap1Gap', 'Rap1GTPGap'],
-             'Ras': ['pShcGrb2SosRas', 'CamCa4GRFRas', 'Raf1Ras', 'dRaf1Ras','dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK','bRafRaspMEK', 'RasGTP', 'RasGDP', 'RasSynGap', 'RasGTPGap', 'RaspSynGap'],
-             'Rap':['bRafRap1MEK', 'bRafRap1pMEK', 'bRafRap1', 'Raf1Rap1', 'Rap1GTP','Rap1GDP','EpacRap1','CRKC3GpCblRap1','Rap1SynGap','Rap1pSynGap'],
-             'PKA':['PKA', 'PKAcAMP2', 'PKAcAMP4', 'PKAr'], 
-             'epac':['Epac','EpacAMP','EpacRap1'],
-             'erk':['ppERK','pERK'], 
-             'RasGTP':['Raf1Ras', 'dRaf1Ras', 'dRaf1RasMEK', 'dRaf1RaspMEK', 'bRafRas', 'bRafRasMEK', 'bRafRaspMEK', 'RasGTP','dRaf1bRaf','dRaf1bRafMEK','dRaf1bRafpMEK'], 
-             'RasSyn':['RasSynGap', 'RaspSynGap'], 
-             'Rap1Syn':['Rap1SynGap', 'Rap1pSynGap'],
-             'cAMP': ['EpacAMP', 'cAMP','PDE4cAMP','PDE2cAMP', 'PDE2cAMP2', 'PKAcAMP2', 'PKAcAMP4'], 
-             'ERK':['pERK', 'ppERK', 'pERKMKP1', 'ppERKMKP1', 'ppMEKERK', 'ppMEKpERK', 'ppERKpShcGrb2Sos'],
-             'GRF':['RasGRF', 'CamCa4GRF','CamCa4GRFRas'],
-             'free_Syn':['SynGap', 'pSynGap'],'CamCa':['CamCa4','CamCa2C','CamCa2N','PP2BCamCa2C','PP2BCamCa2N', 'PP2BCamCa4']}
-
-#subspecies of tot_species do NOT need to be specified as plot_molecules 
-#sub_species={'syn_act':['RasSynGap', 'RaspSynGap','Rap1SynGap', 'Rap1pSynGap','SynGap','pSynGap'],'syn_inact':['pSynden','CKpCamCa4SynGap'],'Rasgrf':['CamCa4GRFRas','CamCa4GRF'],'grf':['CamCa4GRF','CamCa4GRFRas'],'gef':['RasGTP','Rap1GTP']}
-#weights are multiplies for calculating weighted sum, i.e., signature
-#weight={'RasSynGap':-1, 'RaspSynGap':-1.4,'Rap1SynGap':-1, 'Rap1pSynGap':-1.9,'SynGap':-1,'pSynGap':-1.65,'pSynden':1,'CKpCamCa4SynGap':1}
-weight={}  #setting weight to empty dictionary will make all weights = 1
-tot_species=[]#['ERK','Rap1','Ras','epac','GRF']#['ERK','erk']#'RasGTP','Rap1GTP']#['syn_act','syn_inact','grf','gef']   
 ############## END OF PARAMETERS #################
 try:
-    args = ARGS.split(",")
+    args = ARGS.split()
     print("ARGS =", ARGS, "commandline=", args)
     do_exit = False
 except NameError: #NameError refers to an undefined variable (in this case ARGS)
@@ -81,17 +64,35 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
     print("commandline =", args)
     do_exit = True
 
-if len(args[2].split()):
-    plot_molecules=args[2].split()
+params=parse_args(args,do_exit)
+
+if params.mol:
+    plot_molecules=params.mol
 else:
     plot_molecules=None
     
-figtitle=args[0].split('/')[-1]+args[1]
+figtitle=params.fileroot.split('/')[-1]
+if params.par:
+    figtitle+=' '.join(params.par)
 
-og=nrdh5_group(args,tot_species)
+if params.tot:
+    import importlib
+    tot_name=params.tot
+    nm=importlib.import_module(tot_name)
+    tot_species=nm.tot_species
+    weight=nm.weight
+    sub_species=nm.sub_species
+else:
+    weight={}
+    sub_species={}
+    tot_species=[]
+
+num_LTP_stim=params.num_stim
+
+og=nrdh5_group(params.fileroot,params.par,tot_species)
 for fnum,ftuple in enumerate(og.ftuples):
     data=nrdh5_output(ftuple)
-    data.rows_and_columns(plot_molecules,args)
+    data.rows_and_columns(plot_molecules,params.start)
     data.molecule_population()
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:
@@ -101,7 +102,7 @@ for fnum,ftuple in enumerate(og.ftuples):
         data.average_over_voxels()
     # need to add another total array for different regions (to use for signature)
     #Default outputset is _main_, can specify outset= something
-    data.total_subspecies(tot_species,sub_species,args,weights=weight)
+    data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
     og.conc_arrays(data)
     #Now, print or write some optional outputs
     if write_output:
@@ -120,10 +121,10 @@ for fnum,ftuple in enumerate(og.ftuples):
 #other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=1
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
-og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31)
+og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend)
 
 if len(feature_list):
-    og.write_features(feature_list,args[0],write_trials)
+    og.write_features(feature_list,params.fileroot,params.write_trials)
 #################
 #print all the features in nice format.
 features=[k[0:7] for k in og.feature_dict.keys()]
@@ -160,17 +161,18 @@ if showplot:
         pu5.pairs(og,mol_pairs,pairs_timeframe)
 
 '''
-7. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
+1. Test total_traces for spatial model
+2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     Create separate class?  Or add weight into total_species.  Add in baseline subtract as option?
     perhaps separate function to compare to thresholds
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
     lines 341-360 calculates the signature
     lines 370-387 compares to thresholds
     #EXTRACT FEATURES OF total array to add in sig.py functionality
-8. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
-Once working
-1. create real arg parser - to avoid position dependence - especially add numstim (or read from h5file)
-2. possibly try to figure out how to extract number of stimuli
+
+3. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
+
+4. possibly try to figure out how to extract number of stimuli
 inj_keyword='<onset>'
 #lookup - how to decode b'<onset>46000.0</onset>'
 #injtime=
