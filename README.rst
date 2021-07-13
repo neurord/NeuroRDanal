@@ -14,32 +14,34 @@ To run the program from within python, type
 
 .. code-block::
 
-ARGS="subdir/fileroot,par1 par2,mol1 mol2,basal_start basal_end" then execfile('nrdh5_analv2.py')
+ ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
+ execfile('path/to/file/nrdh5_anal.py')
 
 from outside python, type 
 
 .. code-block::
 
-python nrdh5_analv2 "subdir/fileroot [par1 par2] [mol1 mol2] [basal_start basal_send]"
+ python nrdh5_analv2.py subdir/fileroot -par par1 par2 -mol mol1 mol2 mol3 -start basal_start basal_end -tot tot_species_file
 
-DO NOT PUT ANY SPACES NEXT TO THE COMMAS, DO NOT USE TABS
- - mol1 mol2, etc are the names of molecles to process
- - par1 and optionally par2 are used to construct filenames as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
- - DO NOT use hyphens in filenames except for preceding parameter name
- - if no parameters specified, then fileroot needs to be full filename (excluding the .h5 extension)
- - If only a single file is specified, will plot multiple trials; if multiple files, plots the mean over trials for each file
-
-Other parameters to adjust in program
+- mol1 mol2, etc are the names of molecles to process
+- par1 and optionally par2 are used to construct filenames as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
+   * DO NOT use hyphens in filenames except for preceding parameter name
+   * if no parameters specified, then fileroot needs to be full filename (excluding the .h5 extension)
+   * If only a single file is specified, will plot multiple trials; if multiple files, plots the mean over trials for each file
+- to_species_files containes a list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10
+- num_stim - number of LTP trains - used to determine when stimulation is over for calculating area under the curve
+- write_trials - whether to write feature values for individual trials
+ 
+Other parameters to adjust in program (have not yet been added to arg parser)
 
 1. outputavg - set to 1 to create region average output files to read into your favorite graphin software
 2. showplot - set to 2 to plot the spine head concentration
 3. stimspine - list of spine heads that received stimulation
 4. spinehead - name of your spinehead region (from morphology file)
 5. dendname - name of your dendrite (from morphology file)
-6. num_LTP_stim - number of LTP trains - used to determine when stimulation is over for calculating area under the curve
-7.  mol_pairs - list of lists, to generate plots of one molecule versus another parameterized by time
-8.  pairs_timeframe - to specifiy start and end time for the mol_pairs plots
-9. feature_list - specify list of features, such as AUC or amplitude, to plot versus parameter
+6.  mol_pairs - list of lists, to generate plots of one molecule versus another parameterized by time
+7.  pairs_timeframe - to specifiy start and end time for the mol_pairs plots
+8. feature_list - specify list of features, such as AUC or amplitude, to plot versus parameter
 
 **2. nrd_output.py**
 ---------------------
