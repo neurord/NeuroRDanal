@@ -21,7 +21,7 @@ def parse_args(commandline,do_exit):
     parser.add_argument('fileroot', type=str, help = 'give path/to/common_name of set of experiments')
     parser.add_argument('-par',nargs="+",type=str,help='specify 1-2 parameter variations, filenames="subdir/fileroot"+"-"+par1+"*"-"+par2+"*"')
     parser.add_argument('-mol',nargs="+",type=str,help='specify names of molecles to process')
-    parser.add_argument('-start',nargs='+', type=int,help='start and end time for calculating basal concentration')
+    parser.add_argument('-start',nargs='+', type=float,help='start and end time for calculating basal concentration, in sec')
     parser.add_argument('-tot',type=str,help='filename with list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10')
     parser.add_argument('-rows',type=int,help='number of rows to process, e.g., if simulation is still running')
     parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
