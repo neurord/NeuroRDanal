@@ -51,19 +51,23 @@ def plot_features(dataset,feature,title):
             pyplot.xlabel('-'.join(dataset.params))
         pyplot.ylabel(mol+' '+feature)
         pyplot.legend()
+#IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
 def spatial_plot(data,dataset):
     numtrials=len(data.trials)
     for (fname,param) in dataset.ftuples:
         fig,axes=pyplot.subplots(len(data.molecules),numtrials, sharex=True)
         fig.suptitle(fname)
+        axes=fig.axes
         for imol,mol in enumerate(data.molecules):
             for trial in range(numtrials):
-               axes[imol,trial].imshow(dataset.spatial_means[param][mol][trial].T,extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])],aspect='auto',origin='lower')
+               ax=imol*numtrials+trial
+               axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
+                               extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
                #axes[imol,trial].colorbar()
-            axes[imol,0].set_ylabel (mol +', location (um)')
+            axes[imol*numtrials].set_ylabel (mol +', location (um)')
         for trial in range(numtrials):
-            axes[imol,trial].set_xlabel('time (ms)')
+            axes[imol*numtrials+trial].set_xlabel('time (ms)')
              
 def plot_setup(plot_molecules,data,num_spines,plottype):
     pyplot.ion()

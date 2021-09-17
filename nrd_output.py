@@ -48,7 +48,15 @@ class nrdh5_output(object):
         self.spatial_dict=h5utils.spatial_average(bins,dendname,self.data['model']['grid'])
         vol=[x['vol'] for x in self.spatial_dict.values()]
         if any(v==0 for v in vol):
-            print ("**********Too many bins for spatial average****************")
+            print ("**********Too many bins for spatial average, dropping those bins ****************")
+            delete_keys=[] #identify keys, but don't delete
+            for key,vox_vol in self.spatial_dict.items():
+                print(key,vox_vol)
+                if len(vox_vol['vox'])==0:
+                    delete_keys.append(key)
+            for key in delete_keys: #now, delete keys of ordered dict while looping over delete_keys
+                del self.spatial_dict[key]
+        print('final dict',self.spatial_dict)
 #
     def rows_and_columns(self,molecules,start_end):
         #which columns in the data set contain counts of molecules of interest
