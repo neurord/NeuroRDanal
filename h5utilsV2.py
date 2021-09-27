@@ -23,7 +23,7 @@ def parse_args(commandline,do_exit):
     parser.add_argument('-mol',nargs="+",type=str,help='specify names of molecles to process')
     parser.add_argument('-start',nargs='+', type=float,help='start and end time for calculating basal concentration, in sec')
     parser.add_argument('-tot',type=str,help='filename with list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10')
-    parser.add_argument('-rows',type=int,help='number of rows to process, e.g., if simulation is still running')
+    parser.add_argument('-end',type=int,help='end time to process & display, e.g., if simulation is still running')
     parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
     parser.add_argument('-write_trials',type=bool,help='whether to create a file with feature values for each trial',default=False)
     try:
@@ -65,7 +65,7 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
                 ssend[mol]=int(0.1*rows[imol])
     return sstart,ssend
 
-def get_mol_info(simData,plot_molecules):
+def get_mol_info(simData,plot_molecules,endtime=None):
     outputsets=list(simData['model']['output'].keys())
     dt={}#np.zeros((len(plot_molecules)))
     samples=np.zeros((len(plot_molecules)),dtype=int)
@@ -78,8 +78,13 @@ def get_mol_info(simData,plot_molecules):
             if setnum<num_outsets-1 or len(temp_dict)==0:
                 mol_index=get_mol_index(simData,outset,molecule)
                 if mol_index>-1:
-                    samples[imol]=len(simData['trial0']['output'][outset]['times'])
                     dt[molecule]=simData['trial0']['output'][outset]['times'][1]/ms_to_sec #convert msec to sec
+                    if endtime is None:
+                        samples[imol]=len(simData['trial0']['output'][outset]['times'])
+                    else:
+                        endrow=int(endtime/dt[molecule])
+                        print('rows for molecule',molecule,endrow)
+                        samples[imol]=len(simData['trial0']['output'][outset]['times'][:endrow])
                     tot_voxels=tot_voxels+len(simData['model']['output'][outset]['elements'])
                     temp_dict[outset]={'mol_index':mol_index,'elements':simData['model']['output'][outset]['elements'][:]}
         #if len(temp_dict)>0:
@@ -100,9 +105,9 @@ def get_mol_pop(Data,mol):
     samples=Data.out_location[mol]['samples']
     counts=np.zeros((len(Data.trials),samples,Data.maxvols))
     for outname,outset in Data.out_location[mol]['location'].items():
-        time=Data.data[Data.trials[0]]['output'][outname]['times'][:]/ms_to_sec     #Convert msec to sec
+        time=Data.data[Data.trials[0]]['output'][outname]['times'][:samples]/ms_to_sec     #Convert msec to sec
         for trialnum,trial in enumerate(Data.trials):
-            tempcounts=Data.data[trial]['output'][outname]['population'][:,:,outset['mol_index']]
+            tempcounts=Data.data[trial]['output'][outname]['population'][:samples,:,outset['mol_index']]
             #if simulation is still running, array sizes may not be the same. 
             if np.shape(tempcounts)[0]>samples:
                 trialcounts=np.resize(tempcounts,(samples,len(outset['elements'])))

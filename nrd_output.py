@@ -58,7 +58,7 @@ class nrdh5_output(object):
                 del self.spatial_dict[key]
         print('final dict:',self.spatial_dict)
 #
-    def rows_and_columns(self,molecules,start_end):
+    def rows_and_columns(self,molecules,start_end,endtime=None):
         #which columns in the data set contain counts of molecules of interest
         self.all_molecules=h5utils.decode(self.data['model']['species'][:])
         if molecules is not None:
@@ -69,7 +69,7 @@ class nrdh5_output(object):
                  print('choose from',self.all_molecules)
         else:
             self.molecules=self.all_molecules 
-        out_location,dt,rows=h5utils.get_mol_info(self.data, self.molecules)
+        out_location,dt,rows=h5utils.get_mol_info(self.data, self.molecules,endtime)
         self.out_location=out_location
         self.dt=dt
         self.rows=rows
