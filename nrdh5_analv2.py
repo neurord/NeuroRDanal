@@ -14,7 +14,10 @@ from within python, type
 #  DO NOT use hyphens in filenames except for preceding parameter name
 #-mol:
 #  mol1 mol2, etc are the names of molecules to process
-#  if mol ommitted, then all molecules processed.  if sstart ssend are ommitted, then calculates basal from 7.5-10% of runtime
+#  if mol ommitted, then all molecules processed.  
+#-start:
+#   start and end time for calculating basal concentration, in sec
+#   if sstart ssend are ommitted, then calculates basal from 7.5-10% of runtime
 #-tot:
 #  tot_species_files containes a list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10
 #if no parameters specified, then fileroot needs to be full filename (excluding the extension)
@@ -92,7 +95,7 @@ num_LTP_stim=params.num_stim
 og=nrdh5_group(params.fileroot,params.par,tot_species)
 for fnum,ftuple in enumerate(og.ftuples):
     data=nrdh5_output(ftuple)
-    data.rows_and_columns(plot_molecules,params.start)
+    data.rows_and_columns(plot_molecules,params.start,params.end)
     data.molecule_population()
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:

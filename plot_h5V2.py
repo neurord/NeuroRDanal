@@ -100,7 +100,7 @@ def plot_setup(plot_molecules,data,num_spines,plottype):
             col_inc[i]=0.0
     return fig,col_inc,scale
 
-def get_color_label(parlist,params,colinc):
+def get_color_label(parlist,params,colinc,parnames):
     if len(parlist[1])<len(parlist[0]):
         par_index=0
     else:
@@ -114,7 +114,7 @@ def get_color_label(parlist,params,colinc):
         map_index=parlist[list_index].index(params[list_index])
         color_index=int(parlist[par_index].index(params[par_index])*colinc[par_index]*partial_scale)
         mycolor=colors2D[map_index].__call__(color_index+offset[map_index])
-    plotlabel='-'.join([str(k) for k in params])
+    plotlabel='-'.join([parnames[ii]+str(k) for ii,k in enumerate(params)])
     return mycolor,plotlabel,par_index,map_index
  
 def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
@@ -129,11 +129,11 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
     print('***************','shape of axis', np.shape(axis))
     for (fname,param) in dataset.ftuples:
         #First, determine the color scaling
-        if len(dataset.parlist)==0: #should this be dataset.ftuples?
+        if len(dataset.ftuples)==1: 
             mycolor=[0,0,0]
             plotlabel=''
         else:
-            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
+            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
             #Second, plot each molecule
         for imol,mol in enumerate(plotmol):
             #axis[imol].autoscale(enable=True,tight=False)
