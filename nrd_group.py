@@ -35,8 +35,8 @@ class nrdh5_group(object):
             self.time_set[data.parval][molecule]=data.time[molecule]
             self.file_set_conc[data.parval][molecule]=data.OverallMean[molecule]
             if data.maxvols>1:
-                self.regions_means[data.parval][molecule]=data.means['struct'][molecule]
-                self.regions_structure_means[data.parval][molecule]=data.means['region'][molecule]
+                self.regions_means[data.parval][molecule]=data.means['region'][molecule]
+                self.regions_structure_means[data.parval][molecule]=data.means['struct'][molecule]
                 if data.spatial_dict:
                     self.spatial_means[data.parval][molecule]=data.means['space'][molecule]
                 if data.spinelist:
