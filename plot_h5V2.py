@@ -33,7 +33,11 @@ def xval_from_params(dataset):
 
 def plot_features(dataset,feature,title):
     xvals,p=xval_from_params(dataset)
-    for imol,mol in enumerate(dataset.molecules+dataset.tot_species):
+    if len(dataset.tot_species):
+        feature_mol=dataset.molecules+dataset.tot_species
+    else:
+        feature_mol=dataset.molecules
+    for imol,mol in enumerate(feature_mol):
         pyplot.figure() #new figure panel for each molecules
         pyplot.suptitle(title)
         if len(p): #reshape feature values for plotting if 2 params and all combos
@@ -190,7 +194,7 @@ def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
     #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
     numrows= len(dataset.file_set_tot.keys()) 
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
-    fig.canvas.set_window_title(figtitle+'Totals')
+    fig.canvas.manager.set_window_title(figtitle+'Totals')
     axis=fig.axes
     for row,region in enumerate(dataset.file_set_tot.keys()):
         for i,(param,total_trace) in enumerate(dataset.file_set_tot[region].items()):
@@ -235,7 +239,7 @@ def plot3D(image,parval,figtitle,molecules,xvalues,time):
      maxx=float(xvalues[-1])
      asp=time[-1]/(maxx-minx)/len(parval) #may depend on number of subplots! 
      fig,axes=pyplot.subplots(len(parval),1,sharex=True,sharey=True,figsize=(6,9))
-     fig.canvas.set_window_title(figtitle)
+     fig.canvas.manager.set_window_title(figtitle)
      fig.suptitle('+'.join(molecules))
      for par in range(len(parval)):
           #for some reason, y axes are not correct without *10 in extent
