@@ -117,6 +117,31 @@ def get_color_label(parlist,params,colinc,parnames):
     plotlabel='-'.join([parnames[ii]+str(k) for ii,k in enumerate(params)])
     return mycolor,plotlabel,par_index,map_index
  
+def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12):
+    #call plot_setup, but pass len(region_dict.keys()) instead of number of stimulated spines
+    num_regions=len(region_dict.keys())
+    axis=[]
+    for reg in range(num_regions):
+        axis.append(fig[reg].axes)
+    for (fname,param) in dataset.ftuples:
+        #First, determine the color scaling
+        if len(dataset.ftuples)==1: 
+            mycolor=[0,0,0]
+            plotlabel=''
+        else:
+            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
+            #Second, plot each molecule
+        for imol,mol in enumerate(plotmol):
+            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param][mol])[1])
+            for regnum,reg in enumerate(region_dict.keys()):
+                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.regions_means[param][mol][0:maxpoint],axis=0).T[regnum],
+                                       label=plotlabel,color=mycolor)
+                axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
+                axis[regnum][imol].tick_params(labelsize=textsize)
+                axis[regnum][imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
+        for regnum,reg in enumerate(region_dict.keys()):
+            axis[regnum][imol].legend(fontsize=legtextsize, loc='best')                
+
 def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
     num_spines=len(stimspines)
     print("plottrace: plotmol,parlist,parval:", plotmol,dataset.parlist,[p[1] for p in dataset.ftuples])

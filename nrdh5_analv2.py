@@ -37,20 +37,20 @@ from NeuroRDanal.h5utilsV2 import parse_args
 
 #probably should add most of these to args with defaults 
 submembname='sub'
-dendname="dend"
+dendname="other"
 spinehead="head"
-stimspine=['sa1[0]'] #list of stimulated spines
+stimspine=[] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=1 #one file per molecules per input file
-output_auc=1#one file per molecule per set of input files
+write_output=0 #one file per molecules per input file
+output_auc=0#one file per molecule per set of input files
 showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
 show_mol_totals=0
 print_head_stats=0
 textsize=10
-feature_list=['auc']#,'amplitude']
+feature_list=[]#,'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
@@ -162,6 +162,11 @@ if showplot:
         pu5.spatial_plot(data,og)
     if len(mol_pairs):
         pu5.pairs(og,mol_pairs,pairs_timeframe)
+    if data.maxvols>1:
+        fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
+        for regnum,reg in enumerate(data.region_dict):
+            fig[regnum].suptitle(figtitle+' '+reg)
+        pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
 
 '''
 1. Test total_traces for spatial model
