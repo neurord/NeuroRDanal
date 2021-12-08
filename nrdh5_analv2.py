@@ -151,7 +151,7 @@ if showplot:
         for spnum,sp in enumerate(data.spinelist):
             fig[spnum].suptitle(figtitle+' '+sp)
     else:
-        fig.canvas.set_window_title(figtitle)
+        fig.canvas.manager.set_window_title(figtitle)
     pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
     if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
