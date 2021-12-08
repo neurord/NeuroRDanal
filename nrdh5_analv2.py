@@ -46,7 +46,7 @@ window_size=0.1  #number of msec on either side of peak value to average for max
 show_inject=0
 write_output=0 #one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
-showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graphs 
+showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
 textsize=10
@@ -153,6 +153,11 @@ if showplot:
     else:
         fig.canvas.set_window_title(figtitle)
     pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
+    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+        fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
+        for regnum,reg in enumerate(data.region_dict):
+            fig[regnum].suptitle(figtitle+' '+reg)
+        pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
         pu5.plot_signature(tot_species,og,figtitle,col_inc,textsize=textsize)    #plot some feature values
@@ -162,11 +167,6 @@ if showplot:
         pu5.spatial_plot(data,og)
     if len(mol_pairs):
         pu5.pairs(og,mol_pairs,pairs_timeframe)
-    if data.maxvols>1:
-        fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
-        for regnum,reg in enumerate(data.region_dict):
-            fig[regnum].suptitle(figtitle+' '+reg)
-        pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
 
 '''
 1. Test total_traces for spatial model
