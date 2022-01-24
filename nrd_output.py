@@ -186,9 +186,9 @@ class nrdh5_output(object):
                     if self.spinelist: 
                         self.total_trace['spine'][mol][trialnum]+=wt*np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)/self.region_dict[self.head]['vol']/mol_per_nM_u3
             outputline=str(self.parval)+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
-            if self.dsm_vox:
-                outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
             if self.spinelist:
+                outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
+            if self.dsm_vox:
                 outputline +=',  dsm: '+str(np.round(self.total_trace['dsm'][mol][0,0],3))+' pSD'
             print(outputline)
   
