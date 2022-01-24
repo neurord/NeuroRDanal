@@ -26,6 +26,9 @@ def parse_args(commandline,do_exit):
     parser.add_argument('-end',type=int,help='end time to process & display, e.g., if simulation is still running')
     parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
     parser.add_argument('-write_trials',type=bool,help='whether to create a file with feature values for each trial',default=False)
+    #parser.add_argument('-time',nargs='+',type=str,help='stime etime specify the timeframe from which to obtain molecule concentrations for IC')
+    parser.add_argument('-IC',help='IC is the name of the IC file to be updated')
+    parser.add_argument('-Rxn',help='Rxn file is the reaction file used for the simulation')
     try:
         args = parser.parse_args(commandline) # maps arguments (commandline) to choices, and checks for validity of choices.
         #if arguments are mapped incorrectly, python wants to exit, but the next line says "don't", instead check whether we are in python (do_exit=False) then don't exit, just give us a warning
