@@ -223,16 +223,20 @@ def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
     axis=fig.axes
     for row,region in enumerate(dataset.file_set_tot.keys()):
         for i,(param,total_trace) in enumerate(dataset.file_set_tot[region].items()):
-            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc)
+            if len(dataset.file_set_tot[region].keys())==1:
+                mycolor=[0,0,0]
+                plotlabel=''
+            else:
+                mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
             for col,(mol,trace) in enumerate(total_trace.items()): 
                 #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
-                ax=col+row*numrows
+                ax=col+row*numcols
                 newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
                 axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
                 axis[ax].set_title(mol+' TOTAL',fontsize=textsize)
                 axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
                 axis[ax].tick_params(labelsize=textsize)
-                axis[row*numrows].set_ylabel('Conc (nM)',fontsize=textsize)
+                axis[row*numcols].set_ylabel(region+'Conc (nM)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
         if len(thresholds): #this needs to be fixed.  Determine how to match thresholds to mol/sig
             r=(1,0)[row==0]
