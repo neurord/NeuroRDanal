@@ -52,20 +52,21 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
     print("commandline =", args)
     do_exit = True
 
-if len(args[1]):
-    all_species=args[1].split()
-else:
-    all_species=None
-
 dendname="dend" #from morph file
 spinehead="head" #from morph file
 submembname=dendname+'sub' 
 
 #load the data 
-ftuples,parlist,params=h5utilsV2.argparse(args)
-for fnum,ftuple in enumerate(ftuples):
+params=h5utilsV2.parse_args(args,do_exit)#h5utilsV2.argparse(args)
+if len(args[1]):
+    all_species=params.mol
+else:
+    all_species=None
+tot_species=[]
+og=nrdh5_group(params.fileroot,params.par,tot_species) 
+for fnum,ftuple in enumerate(og.ftuples):
     data=nrdh5_output(ftuple)
-    data.rows_and_columns(all_species,args)
+    data.rows_and_columns(all_species,params.start,params.end)
     data.molecule_population()
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:
@@ -85,7 +86,7 @@ if data.maxvols>1:
                 mole_conc_ic[mol][region]=np.mean(np.mean(data.means[regions_params][mol][:,-10:,jj],axis=1))
 
 #read in initial conditions file
-IC_filename=args[4]
+IC_filename=params.IC 
 #print(IC_filename)
 tree=ET.parse(IC_filename+'.xml')
 root=tree.getroot()
@@ -99,7 +100,7 @@ for elem_ic in root:
         IC_types[elem_ic.tag][elem_ic.get('region')]=elem_ic.get('region')+'sub'
 
 ## read in reaction file
-Rxn_filename=args[5]
+Rxn_filename=params.Rxn
 ## determine which species diffuse
 diffuse_species=DiffuseSpecies(Rxn_filename)
 all_species=AllSpecies(root) #currently not used
@@ -121,7 +122,7 @@ for rt in root:
                 print('updated elems',region,mol,e.attrib)
                 IC_molecules.append(mol)
             else:
-                print('NOT updating ', region,' for diffusible', mol,e.attrib)
+                print('NOT updating ', region,' for non-diffusible', mol,e.attrib)
     elif rt.tag=='ConcentrationSet':
         elems=subtree.findall('.//NanoMolarity')
         for e in elems:
