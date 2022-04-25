@@ -50,7 +50,7 @@ showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for 
 show_mol_totals=0
 print_head_stats=0
 textsize=10
-feature_list=[]#,'amplitude']
+feature_list=[]#'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
@@ -64,6 +64,9 @@ try:
     do_exit = False
 except NameError: #NameError refers to an undefined variable (in this case ARGS)
     args = sys.argv[1:]
+    import os
+    mydir=os.getcwd()
+    sys.path.append(mydir)
     print("commandline =", args)
     do_exit = True
 
