@@ -140,6 +140,7 @@ class nrdh5_output(object):
     #add option to baseline subtract - separate function?
     def total_subspecies(self,tot_species,sub_species,start_end,outset='__main__',weights={}):
         self.tot_species={t:[] for t in tot_species}
+        self.endtime={t:[] for t in tot_species}
         self.total_trace={'Overall':{}}
         if self.dsm_vox:
             self.total_trace['dsm']={}
@@ -156,10 +157,9 @@ class nrdh5_output(object):
             out_location,dt,rows=h5utils.get_mol_info(self.data, mol_set)
             sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,start_end)
             if len(np.unique(list(dt.values())))>1:
-                print('PROBLEM, cannot total subspecies for',mol,' with different dt',dt)
-            else:
-                dt=np.mean(list(dt.values()))
-                self.endtime={mol:(rows[0]-1)*dt for mol in tot_species}
+                print('WARNING, subspecies have',mol,' have different dt',dt,'using largest and interpolating')
+            self.dt[mol]=np.max(list(dt.values())) #use largest dt, and then subsample subspecies with smaller dt
+            self.endtime[mol]=(rows[0]-1)*self.dt[mol] #FIXME, use rows corresponding to correct dt, possible rows[1]?
             self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[0]))
             if self.dsm_vox:
                 self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[0]))
@@ -167,9 +167,6 @@ class nrdh5_output(object):
                 self.total_trace['spine'][mol]=np.zeros((len(self.trials),rows[0]))
             #### second, find molecule index of the sub_species and total them
             for subspecie in mol_set:
-                self.dt[mol]=dt 
-                self.sstart[mol]=sstart[subspecie]
-                self.ssend[mol]=ssend[subspecie]
                 wt=weights[subspecie] if subspecie in weights.keys() else 1
                 for trialnum,trial in enumerate(self.trials):
                     if subspecie not in self.molecules:
@@ -178,13 +175,30 @@ class nrdh5_output(object):
                             mol_pop=self.data[trial]['output'][outname]['population'][:,:,outset['mol_index']] # FIXME won't work if > 1 outset
                     else:
                         mol_pop=self.counts[subspecie][trialnum]
+                    pop_sum=np.sum(mol_pop,axis=1) #sum over voxels
                     #print('tot_species',mol,subspecie,np.shape(mol_pop),np.shape(self.total_trace['Overall'][mol][trialnum]))
-                    self.total_trace['Overall'][mol][trialnum]+=wt*np.sum(mol_pop,axis=1)/self.TotVol/mol_per_nM_u3
+                    if dt[subspecie] == self.dt[mol]:
+                        self.sstart[mol]=sstart[subspecie]
+                        self.ssend[mol]=ssend[subspecie]
+                    else:
+                        #interpolate
+                        target_t=np.arange(len(self.total_trace['Overall'][mol][trialnum]))*self.dt[mol]
+                        subspecie_t=np.arange(len(mol_pop))*dt[subspecie]
+                        print(mol,subspecie,len(target_t),len(subspecie_t),target_t[-1],subspecie_t[-1])
+                        pop_sum=np.interp(target_t,subspecie_t, pop_sum)
+                        print('after interp',len(pop_sum), len(self.total_trace['Overall'][mol][trialnum]))
+                    self.total_trace['Overall'][mol][trialnum]+=wt*pop_sum/self.TotVol/mol_per_nM_u3
                     #then total sub_species in submembrane and spine head, if they exist
                     if self.dsm_vox:
-                        self.total_trace['dsm'][mol][trialnum]+=wt*np.sum(mol_pop[:,self.dsm_vox['vox']],axis=1)/self.dsm_vox['vol']*self.dsm_vox['depth']/mol_per_nM_u3
-                    if self.spinelist: 
-                        self.total_trace['spine'][mol][trialnum]+=wt*np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)/self.region_dict[self.head]['vol']/mol_per_nM_u3
+                        pop_sum=np.sum(mol_pop[:,self.dsm_vox['vox']],axis=1)
+                        if dt[subspecie] != self.dt[mol]: #assume that subspecie_t is same for all regions and structures
+                            pop_sum=np.interp(target_t,subspecie_t, pop_sum)
+                        self.total_trace['dsm'][mol][trialnum]+=wt*pop_sum/self.dsm_vox['vol']*self.dsm_vox['depth']/mol_per_nM_u3
+                    if self.spinelist:
+                        pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)
+                        if dt[subspecie] != self.dt[mol]:
+                            pop_sum=np.interp(target_t,subspecie_t, pop_sum)
+                        self.total_trace['spine'][mol][trialnum]+=wt*pop_sum/self.region_dict[self.head]['vol']/mol_per_nM_u3
             outputline=str(self.parval)+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
             if self.spinelist:
                 outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
