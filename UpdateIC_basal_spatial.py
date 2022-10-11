@@ -1,14 +1,15 @@
-'''ARGS="model,,,stime etime,IC,Rxn"
+
+'''ARGS="model -start stime etime -IC icfile -Rxn rxnfile"
 ## model is name of h5 file from which you are going to take initial conditions
 ## stime etime specify the timeframe from which to obtain molecule concentrations for IC
 ## IC is the name of the IC file to be updated
 ## Rxn file is the reaction file used for the simulation
-###excec(open('UpdateIC_basal_spatial.py').read())
+###exec(open('/path/to/directory/UpdateIC_basal_spatial.py').read())
 # from terminal window,
 python3 UpdateIC_basal_spatial.py h5file '' ''  'stime etime' ICfile Rxnfile
 do not include file extensions in the filenames
 e.g.
-python3 -i UpdateIC_basal_spatial.py Model_SPNspineAChm4R_Gshydr5_GapD-nostim '' '' "450 500" IC_SPNspine_noATP Rxn_SPNspine_noATP
+python3 -i UpdateIC_basal_spatial.py Model_SPNspineAChm4R_Gshydr5_GapD-nostim -start 450 500 -IC IC_SPNspine_noATP -Rxn Rxn_SPNspine_noATP
 '''
 from lxml import etree
 from xml.etree import ElementTree as ET
@@ -44,7 +45,7 @@ def DiffuseSpecies (Rxn_filename):
     return species_diff 
 
 try:
-    args = ARGS.split(",")
+    args = ARGS.split(" ")
     print("ARGS =", ARGS, "commandline=", args)
     do_exit = False
 except NameError: #NameError refers to an undefined variable (in this case ARGS)
@@ -87,7 +88,7 @@ if data.maxvols>1:
 
 #read in initial conditions file
 IC_filename=params.IC 
-#print(IC_filename)
+print(IC_filename)
 tree=ET.parse(IC_filename+'.xml')
 root=tree.getroot()
 tags=list(np.unique([rt.tag for rt in root]))
@@ -118,7 +119,7 @@ for rt in root:
         for e in elems:
             mol=e.attrib['specieID']
             if mol in diffuse_species:
-                e.attrib['value']=str(mole_conc_ic[mol]['general'])
+                e.attrib['value']=str(np.round(mole_conc_ic[mol]['general'],3))
                 print('updated elems',region,mol,e.attrib)
                 IC_molecules.append(mol)
             else:
@@ -127,7 +128,7 @@ for rt in root:
         elems=subtree.findall('.//NanoMolarity')
         for e in elems:
             mol=e.attrib['specieID']
-            e.attrib['value']=str(mole_conc_ic[mol][region])
+            e.attrib['value']=str(np.round(mole_conc_ic[mol][region],3))
             print('updated elems',region,mol,e.attrib)
             IC_molecules.append(mol)
     elif rt.tag=='SurfaceDensitySet':
@@ -135,7 +136,7 @@ for rt in root:
         height=data.region_struct_dict[region]['depth']
         for e in elems:
             mol=e.attrib['specieID']
-            e.attrib['value']=str(mole_conc_ic[mol][region]*height)
+            e.attrib['value']=str(np.round(mole_conc_ic[mol][region]*height,3))
             print('updated elems',rt.tag,region,e.attrib)
             IC_molecules.append(mol)
 ### Some molecules are not diffusible, but are not specified in region or SurfaceDensitSet
@@ -146,8 +147,8 @@ elems=subtree.findall('.//NanoMolarity')
 for e in elems:
     mol=e.attrib['specieID']
     if mol not in IC_molecules:
-        e.attrib['value']=str(mole_conc_ic[mol]['general'])
-        print('Go back and update',region,mol,e.attrib)
+        e.attrib['value']=str(np.round(mole_conc_ic[mol]['general'],3))
+        print('Updated (on 2nd pass)',region,mol,e.attrib)
         IC_molecules.append(mol)
     
 #check if all mol are present in the IC files
@@ -163,8 +164,7 @@ if len(IC_file_mols-both_mols)>0:
     print('************** molecules',IC_file_mols-both_mols, 'in conc file but not in IC file')
 
 #write the new IC file
-with open(IC_filename+'h5_update.xml', 'wb') as out:
+outfile=IC_filename+'h5_update.xml'
+with open(outfile, 'wb') as out:
     out.write(ET.tostring(root))            
-'''
-'''
  
