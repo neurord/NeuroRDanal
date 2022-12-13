@@ -53,7 +53,7 @@ class nrdh5_group(object):
                     self.dt[sp]=data.dt[sp]
                     self.endtime[data.parval][sp]=data.endtime[sp]
         
-    def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None):
+    def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
         import operator
         self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau']
         self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples),len(trials))) for feat in self.feature_list}
@@ -129,10 +129,14 @@ class nrdh5_group(object):
                     ####################
                     # CALCULATE AUC, using baseline+stdev as threshold - possibly use this for plateau?
                     #also use the latest stimulation time if specified
-                    if numstim>1 and len(par):
-                        stim_time=int((float(par[-1])*(numstim-1))/self.dt[mol]+self.ssend[mol])#get previous to last stimuation time
-                    else:
-                        stim_time=self.ssend[mol]
+                    stim_time=self.ssend[mol] #default.  Overwrite under some conditions
+                    if numstim>1:
+                        if iti:
+                            stim_time=int((float(iti)*(numstim-1))/self.dt[mol]+self.ssend[mol])
+                        elif len(par):
+                            testset=[i for i in par[-1] ]
+                            if np.all([i in '0123456789.' for i in testset]):
+                                stim_time=int((float(par[-1])*(numstim-1))/self.dt[mol]+self.ssend[mol])#get previous to last stimuation time
                     if end_baseline_start:
                         basestart=int(end_baseline_start/self.dt[mol])
                         end_baseline=np.mean(traces[par][mol][:,basestart:],axis=1)
