@@ -94,6 +94,7 @@ else:
     tot_species=[]
 
 num_LTP_stim=params.num_stim
+iti=params.iti
 
 og=nrdh5_group(params.fileroot,params.par,tot_species)
 for fnum,ftuple in enumerate(og.ftuples):
@@ -127,7 +128,7 @@ for fnum,ftuple in enumerate(og.ftuples):
 #other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=1
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
-og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend)
+og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
 
 if len(feature_list):
     og.write_features(feature_list,params.fileroot,params.write_trials)
