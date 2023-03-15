@@ -20,9 +20,10 @@ class nrdh5_group(object):
         if len(tot_species):
             self.tot_species=tot_species
             self.endtime={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
+            self.file_set_tot={'Overall':{k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}}
         else:
             self.tot_species=[]
-        self.file_set_tot={'Overall':{}}
+            self.file_set_tot={'Overall':{}}
 
     def conc_arrays(self,data):
         self.molecules=data.molecules
@@ -45,7 +46,8 @@ class nrdh5_group(object):
                 self.spatial_data=None
         if len(self.tot_species):
             for region in data.total_trace.keys():
-                self.file_set_tot[region]={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
+                if region not in self.file_set_tot.keys():
+                    self.file_set_tot[region]={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
                 for imol,sp in enumerate(self.file_set_tot[region][data.parval].keys()):
                     self.file_set_tot[region][data.parval][sp]=data.total_trace[region][sp][:,:]
                     self.sstart[sp]=data.sstart[sp]
