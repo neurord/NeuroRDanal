@@ -33,7 +33,7 @@ import sys
 from NeuroRDanal import plot_h5V2 as pu5
 from NeuroRDanal.nrd_output import nrdh5_output
 from NeuroRDanal.nrd_group import nrdh5_group
-from NeuroRDanal.h5utilsV2 import parse_args
+from NeuroRDanal.h5utilsV2 import parse_args,get_tot
 
 #probably should add most of these to args with defaults 
 submembname='sub'
@@ -81,17 +81,8 @@ figtitle=params.fileroot.split('/')[-1]
 if params.par:
     figtitle+=' '.join(params.par)
 
-if params.tot:
-    import importlib
-    tot_name=params.tot
-    nm=importlib.import_module(tot_name)
-    tot_species=nm.tot_species
-    weight=nm.weight
-    sub_species=nm.sub_species
-else:
-    weight={}
-    sub_species={}
-    tot_species=[]
+
+tot_species,weight,sub_species=get_tot(params)
 
 num_LTP_stim=params.num_stim
 iti=params.iti

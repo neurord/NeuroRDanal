@@ -329,3 +329,21 @@ def rolling(indices,dur):
             contig_above.append(index)
     return contig_above
 
+def get_tot(params):
+    if params.tot:
+        import importlib
+        import os
+        import sys
+        tot_name=os.path.basename(params.tot)
+        tot_path=os.path.dirname(params.tot)
+        sys.path.append(tot_path)
+        nm=importlib.import_module(tot_name)
+        tot_species=nm.tot_species
+        weight=nm.weight
+        sub_species=nm.sub_species
+    else:
+        weight={}
+        sub_species={}
+        tot_species=[]
+    return tot_species,weight,sub_species
+
