@@ -139,6 +139,7 @@ class nrdh5_output(object):
     #FOR SIGNATURE:
     #add option to baseline subtract - separate function?
     def total_subspecies(self,tot_species,sub_species,start_end,outset='__main__',weights={}):
+        print_trial=-1 #set to 0 for debugging output
         self.tot_species={t:[] for t in tot_species}
         self.endtime={t:[] for t in tot_species}
         self.total_trace={'Overall':{}}
@@ -157,14 +158,15 @@ class nrdh5_output(object):
             out_location,dt,rows=h5utils.get_mol_info(self.data, mol_set)
             sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,start_end)
             if len(np.unique(list(dt.values())))>1:
-                print('WARNING, subspecies have',mol,' have different dt',dt,'using largest and interpolating')
-            self.dt[mol]=np.max(list(dt.values())) #use largest dt, and then subsample subspecies with smaller dt
-            self.endtime[mol]=(rows[0]-1)*self.dt[mol] #FIXME, use rows corresponding to correct dt, possible rows[1]?
-            self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[0]))
+                print('WARNING, subspecies have',mol,' have different dt',dt,'using largest and interpolating',rows)
+            dt_index=np.argmax(list(dt.values()))
+            self.dt[mol]=list(dt.values())[dt_index] #use largest dt, and then subsample subspecies with smaller dt
+            self.endtime[mol]=(rows[dt_index]-1)*self.dt[mol] #FIXME, use rows corresponding to correct dt, possible rows[1]?
+            self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.dsm_vox:
-                self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[0]))
+                self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.spinelist: 
-                self.total_trace['spine'][mol]=np.zeros((len(self.trials),rows[0]))
+                self.total_trace['spine'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             #### second, find molecule index of the sub_species and total them
             for subspecie in mol_set:
                 wt=weights[subspecie] if subspecie in weights.keys() else 1
@@ -184,9 +186,11 @@ class nrdh5_output(object):
                         #interpolate
                         target_t=np.arange(len(self.total_trace['Overall'][mol][trialnum]))*self.dt[mol]
                         subspecie_t=np.arange(len(mol_pop))*dt[subspecie]
-                        print(mol,subspecie,len(target_t),len(subspecie_t),target_t[-1],subspecie_t[-1])
+                        if trialnum==print_trial:
+                            print('mol=',mol,subspecie,'trial',trial,'len tot=',len(target_t),'len subsp=',len(subspecie_t),'tot time=',target_t[-1],'subsp time=', subspecie_t[-1])
                         pop_sum=np.interp(target_t,subspecie_t, pop_sum)
-                        print('after interp',len(pop_sum), len(self.total_trace['Overall'][mol][trialnum]))
+                        if trialnum==print_trial:
+                            print('after interp, len interp=',len(pop_sum), 'len tot=', len(self.total_trace['Overall'][mol][trialnum]))
                     self.total_trace['Overall'][mol][trialnum]+=wt*pop_sum/self.TotVol/mol_per_nM_u3
                     #then total sub_species in submembrane and spine head, if they exist
                     if self.dsm_vox:
@@ -197,9 +201,11 @@ class nrdh5_output(object):
                     if self.spinelist:
                         pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)
                         if dt[subspecie] != self.dt[mol]:
+                            if trialnum==print_trial:
+                                print('SPINE,',subspecie,' dt subsp=',dt[subspecie],'dt mol=',self.dt[mol])
                             pop_sum=np.interp(target_t,subspecie_t, pop_sum)
                         self.total_trace['spine'][mol][trialnum]+=wt*pop_sum/self.region_dict[self.head]['vol']/mol_per_nM_u3
-            outputline=str(self.parval)+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
+            outputline='####  '+str(self.parval)+'  >>>'+mol+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
             if self.spinelist:
                 outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
             if self.dsm_vox:
