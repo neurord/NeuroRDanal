@@ -35,14 +35,16 @@ def AllSpecies (root):
     return all_species
 
 def DiffuseSpecies (Rxn_filename):
-    species_diff=[]
+    species_diff=[];species_nondiff=[]
     tree_rxn=ET.parse(Rxn_filename+'.xml')
     root_rxn=tree_rxn.getroot()
     for elem_rxn in root_rxn:
         if elem_rxn.tag== 'Specie':
             if float(elem_rxn.get('kdiff'))>0:
                 species_diff.append(elem_rxn.get('id'))
-    return species_diff 
+            else:
+                species_nondiff.append(elem_rxn.get('id'))
+    return species_diff ,species_nondiff
 
 try:
     args = ARGS.split(" ")
@@ -106,13 +108,15 @@ for elem_ic in root:
 ## read in reaction file
 Rxn_filename=params.Rxn
 ## determine which species diffuse
-diffuse_species=DiffuseSpecies(Rxn_filename)
+diffuse_species,non_diffuse_mol=DiffuseSpecies(Rxn_filename)
 all_species=AllSpecies(root) 
 
 ########### Initialize some lists and dictionaries 
-IC_molecules=[];non_diffuse_mol=[]
-total={m:{} for sp in all_species.values() for m in sp }
-
+IC_molecules=[]
+region_conc={m:{} for sp in all_species.values() for m in sp }
+vol={r:data.region_dict[r]['vol'] for r in data.region_dict.keys()}
+for r in data.region_struct_dict.keys():
+    vol[r]=data.region_struct_dict[r]['vol']
 ########### Update concentration in IC file #####################
 for rt in root:
     subtree=ET.ElementTree(rt)
@@ -127,50 +131,52 @@ for rt in root:
             mol=e.attrib['specieID']
             if mol in diffuse_species:
                 e.attrib['value']=str(np.round(mole_conc_ic[mol][region],3))
-                print('updated elems',region,mol,e.attrib)
+                print(mol,'updated elems',region,e.attrib)
                 IC_molecules.append(mol)
-                total[mol][region]=mole_conc_ic[mol][region]*data.TotVol
+                region_conc[mol][region]=mole_conc_ic[mol][region]
             else:
-                print('NOT updating ', region,' for non-diffusible', mol,e.attrib)
-                non_diffuse_mol.append(mol)
+                print(mol,'NOT updating ', region,' for non-diffusible', e.attrib)
     else:
         if rt.tag=='ConcentrationSet':
             elems=subtree.findall('.//NanoMolarity')
             height=1
-            volume=data.region_dict[region]['vol']
         elif rt.tag=='SurfaceDensitySet':
             elems=tree.findall('.//PicoSD')
             height=data.region_struct_dict[region]['depth']
-            if region != 'general':
-                volume=data.region_struct_dict[region]['vol']
         for e in elems:
             mol=e.attrib['specieID']
             e.attrib['value']=str(np.round(mole_conc_ic[mol][region]*height,3))
-            print(' SD or Region - updated elems',rt.tag,region,e.attrib)
             IC_molecules.append(mol)
-            total[mol][region]=mole_conc_ic[mol][region]*volume
-            print('**********',mol,region,'vol=',round(volume,5),'total=',total[mol])
+            region_conc[mol][region]=mole_conc_ic[mol][region]
+            print(mol,' SD or Region - updated elems',rt.tag,region,e.attrib,region_conc[mol])
 
 ### Some molecules are not diffusible, but are not specified in region or SurfaceDensitySet
 ### Those should be specified using general concentration set #######
 ### Some molecules are not diffusible, and specificed in region or surfaceDensitySet, and should also be non-zero in cytosol
-subtree=ET.ElementTree(re_do_root)
+print(u'◢◤◢◤◢◤◢◤ second pass ◢◤◢◤◢◤◢◤')
+subtree=ET.ElementTree(re_do_root) #re_do_root gets subtree for general concentration set only
 region='general'
 elems=subtree.findall('.//NanoMolarity')
 for e in elems:
     mol=e.attrib['specieID']
     if mol not in IC_molecules:
         e.attrib['value']=str(np.round(mole_conc_ic[mol]['general'],3))
-        print('Updated (on 2nd pass)',region,mol,e.attrib)
+        print('Updated conc set for non-diffusible molecule (on 2nd pass)',region,mol,e.attrib)
         IC_molecules.append(mol)
-        total[mol]['general']=mole_conc_ic[mol]['general']*data.TotVol
+        region_conc[mol]['general']=mole_conc_ic[mol]['general']
     elif  mol in non_diffuse_mol and e.attrib['value']!=0: # if not explicitly zero, update with dendcyt value
         e.attrib['value']=str(np.round(mole_conc_ic[mol][region],3))
-        print('Updated (on 2nd pass) non-zero dend cyt',region,mol,e.attrib)
-        volume=data.region_struct_dict['dend'+'cyt']['vol'] #FIXME  'dend' is a region
-        total[mol]['dend'+'cyt']=mole_conc_ic[mol][region]*volume
-        print('**********',mol,region,'vol=',volume,'total=',total[mol])
-
+        region_conc[mol]['dend'+'cyt']=mole_conc_ic[mol][region] #FIXME  'dend' is a region
+        print('>>>>> Updated (on 2nd pass) general conc set, with region overrides',region,mol,', IC=',e.attrib,region_conc[mol])
+    else: #this stuff should be commented about after debugging is finished
+        print('&&&&&&&&&&&& NOT updating!',mol,region,', total (moles)=',region_conc[mol],', IC (conc)=',e.attrib)
+        if  mol in non_diffuse_mol:
+            print('    mol in non_diffuse_mol and conc zero')
+        elif e.attrib['value']!=0:
+            print('      e.attrib is non-zero in IC, molecule diffusible')
+        else:
+            print('      e.attrib is zero in IC and molecule diffusible')
+        
 ########### check if all mol are present in the IC files ##############
 IC_file_mols=set(IC_molecules)
 h5_mols=set(mole_conc_ic.keys())
@@ -194,13 +200,13 @@ for imol,mol in enumerate(tot_species):
         mol_set=[subsp for subsp in IC_molecules if mol in subsp] #h5utils.decode(self.data['model']['output'][outset]['species'][:])
     for subspecie in mol_set:
         total_conc['general'][mol]+=mole_conc_ic[subspecie]['general']
-        if 'general' in total[subspecie].keys():
-            print (subspecie,'one total key?', total[subspecie].keys())
-            total_subsp[subspecie]=total[subspecie]['general']/data.TotVol
+        if 'general' in region_conc[subspecie].keys():
+            print (subspecie,'one total key?', region_conc[subspecie].keys())
+            total_subsp[subspecie]=region_conc[subspecie]['general']
         else:
-            total_subsp[subspecie]=np.sum([t for m,t in total[subspecie].items() if m != 'general'])/data.TotVol
-            if len(total[subspecie].keys()):
-                print (subspecie,'many total keys?', total[subspecie].keys(),'sum',total_subsp[subspecie])
+            total_subsp[subspecie]=np.sum([conc*vol[reg] for reg,conc in region_conc[subspecie].items() if reg != 'general'])/data.TotVol
+            if len(region_conc[subspecie].keys()):
+                print (subspecie,'many total keys?', region_conc[subspecie].keys(),'sum',total_subsp[subspecie])
             else:
                 print(subspecie,'no keys')
         total_conc['Sum_specific'][mol]+=total_subsp[subspecie]
