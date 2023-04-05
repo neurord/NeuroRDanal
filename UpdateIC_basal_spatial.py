@@ -61,7 +61,7 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
 dendname="dend" #from morph file
 spinehead="head" #from morph file
 submembname=dendname+'sub'
-decimals=3 #how many decimals to use in the updated IC file values
+decimals=4 #how many decimals to use in the updated IC file values
 
 #load the data 
 params=h5utilsV2.parse_args(args,do_exit)#h5utilsV2.argparse(args)
@@ -86,14 +86,15 @@ for fnum,ftuple in enumerate(og.ftuples):
 #mol concentration for both spine and submem
 mole_conc_ic={M:{} for M in data.molecules}
 for mol in data.molecules:
-    mole_conc_ic[mol]['general']=np.mean(np.mean(data.OverallMean[mol]))
+    mole_conc_ic[mol]['general']=np.mean(data.OverallMean[mol][0,data.sstart[mol]:data.ssend[mol]])# 0 indicates first trial
+   
 if data.maxvols>1:
     mylist=['region','struct']
     for ii, regions_params in enumerate (mylist):
         for mol in data.molecules:
             for jj,key in enumerate(data.output_labels[regions_params][mol].split()):
                 region=key.split('_')[-1]
-                mole_conc_ic[mol][region]=np.mean(np.mean(data.means[regions_params][mol][:,data.ssend[mol]-1:data.ssend[mol]:,jj],axis=1))
+                mole_conc_ic[mol][region]=np.mean(data.means[regions_params][mol][0,data.sstart[mol]:data.ssend[mol],jj])# 0 indicates first trial
 
 #read in initial conditions file
 IC_filename=params.IC 
@@ -156,13 +157,13 @@ for rt in root:
             IC_molecules.append(mol)
             region_conc[mol][region]=mole_conc_ic[mol][region]
             print(mol,' SD or Region - updated elems',rt.tag,region,e.attrib,region_conc[mol])
-
+IC_molecules=list(np.unique(IC_molecules))
 ### Some molecules are not diffusible, but are not specified in region or SurfaceDensitySet
 ### Those should be specified using general concentration set #######
 ### Some molecules are not diffusible, and specificed in region or surfaceDensitySet, and should also be non-zero in cytosol
 print(u'◢◤◢◤◢◤◢◤ second pass ◢◤◢◤◢◤◢◤')
 subtree=ET.ElementTree(re_do_root) #re_do_root gets subtree for general concentration set only
-region='general'
+region='dendcyt' ###update general with this value for non-diffusible molecules to allow a dendcyt value different from dendsub
 elems=subtree.findall('.//NanoMolarity')
 for e in elems:
     mol=e.attrib['specieID']
@@ -172,10 +173,10 @@ for e in elems:
         IC_molecules.append(mol)
         region_conc[mol]['general']=mole_conc_ic[mol]['general']
     elif  mol in non_diffuse_mol and e.attrib['value']!=0: # if not explicitly zero, update general to add molecules to cytosol
-        e.attrib['value']=str(np.round(mole_conc_ic[mol]['general'],decimals))
-        region_conc[mol][region]=mole_conc_ic[mol]['general'] 
-        print('>>>>> Updated (on 2nd pass) general conc set, with region overrides',region,mol,', IC=',e.attrib,region_conc[mol])
-    else: #this stuff should be commented about after debugging is finished
+        e.attrib['value']=str(np.round(mole_conc_ic[mol][region],decimals))
+        region_conc[mol]['dend'+'cyt']=mole_conc_ic[mol][region]
+        print('>>>>> Updated (on 2nd pass) general conc set, using ',region,'with region overrides',region,mol,', IC=',e.attrib,region_conc[mol])
+    '''else: #this stuff should be commented about after debugging is finished
         print('&&&&&&&&&&&& NOT updating!',mol,region,', total (moles)=',region_conc[mol],', IC (conc)=',e.attrib)
         if  mol in non_diffuse_mol:
             print('    mol in non_diffuse_mol and conc zero')
@@ -183,7 +184,7 @@ for e in elems:
             print('      e.attrib is non-zero in IC, molecule diffusible')
         else:
             print('      e.attrib is zero in IC and molecule diffusible')
-        
+    '''    
 ########### check if all mol are present in the IC files ##############
 IC_file_mols=set(IC_molecules)
 h5_mols=set(mole_conc_ic.keys())
