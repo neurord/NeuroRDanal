@@ -66,7 +66,7 @@ def spatial_plot(data,dataset):
         for imol,mol in enumerate(data.molecules):
             for trial in range(numtrials):
                ax=imol*numtrials+trial
-               axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
+               axes[ax].imshow(dataset.means['space'][param][mol][trial].T, aspect='auto',origin='lower',
                                extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
                #axes[imol,trial].colorbar()
             axes[imol*numtrials].set_ylabel (mol +', location (um)')
@@ -138,7 +138,7 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12):
         for imol,mol in enumerate(plotmol):
             maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param][mol])[1])
             for regnum,reg in enumerate(region_dict.keys()):
-                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.regions_means[param][mol][0:maxpoint],axis=0).T[regnum],
+                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.means['regions'][param][mol][0:maxpoint],axis=0).T[regnum],
                                        label=plotlabel,color=mycolor)
                 axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
                 axis[regnum][imol].tick_params(labelsize=textsize)
@@ -171,14 +171,14 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
                 for spnum,sp in enumerate(stimspines):
                     new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
                     new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
-                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.means['spines'][param][mol][0:maxpoint],axis=0).T[spnum],
                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
             elif plottype==3:
                 #if len(ftuples)==1 and len(stimspines)==1:
                 #loop over data.trials and plot trials separately, as in line 154
                 #else:
                 for spnum,sp in enumerate(stimspines):
-                    axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                    axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.means['spines'][param][mol][0:maxpoint],axis=0).T[spnum],
                                         label=plotlabel,color=mycolor)
                     axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
                     axis[spnum][imol].tick_params(labelsize=textsize)
