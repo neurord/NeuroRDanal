@@ -6,7 +6,7 @@ Created on Thu Apr 23 10:58:05 2020
 #from outside python, type python nrdh5_analv2,py subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file
 from within python, type 
      ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
-     execfile('path/to/file/nrdh5_anal.py')
+     exec(open(('path/to/file/nrdh5_anal.py').read())
 
 #-par:
 #  par1 and optionally par2 are specifications of parameter variations, as follows:
@@ -26,7 +26,10 @@ from within python, type
 #e.g. ARGS="plc/Model_PLCassay_Ca1,Ca Gaq,GTP IP3"
 
 additional parameters lines 27-48
+
 """
+ARGS='../Model_Cof -par HSJCF -mol Cof pCof Cofactin -tot tot_species'
+
 import numpy as np
 import sys
 
@@ -37,20 +40,20 @@ from NeuroRDanal.h5utilsV2 import parse_args,get_tot
 
 #probably should add most of these to args with defaults 
 submembname='sub'
-dendname="other"
+dendname="dend" #may need to change this to "dend" for cofilin
 spinehead="head"
-stimspine=[] #list of stimulated spines
+stimspine=['sa1[0]'] #list of stimulated spines  #maybe make this [sa1[0]]
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
 write_output=0 #one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
-showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
+showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
 textsize=10
-feature_list=[]#'amplitude']
+feature_list=['duration','auc']#'amplitude']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[]#[200,2000] #units are sec
@@ -61,7 +64,7 @@ aucend=None#600#end time for calculating auc, or None to calculate end time auto
 try:
     args = ARGS.split()
     print("ARGS =", ARGS, "commandline=", args)
-    do_exit = False
+    do_exit = False 
 except NameError: #NameError refers to an undefined variable (in this case ARGS)
     args = sys.argv[1:]
     import os
