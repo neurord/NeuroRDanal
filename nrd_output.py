@@ -144,10 +144,10 @@ class nrdh5_output(object):
         self.tot_species={t:[] for t in tot_species}
         self.endtime={t:[] for t in tot_species}
         self.total_trace={'Overall':{}}
-        for (mol_pop[:,val['vox']]) in group(self.region_dict and self.region_struct_dict):
-            self.total_trace['dsm']={}
-        if self.dsm_vox:
-            self.total_trace['dsm']={}
+        if self.maxvols > 1:
+            for xdict in [self.region_dict, self.region_struct_dict]:
+                for reg in xdict.keys():
+                    self.total_trace[reg]={}
         if self.spinelist: 
             self.total_trace['spine']={}
         for imol,mol in enumerate(tot_species):
@@ -166,9 +166,10 @@ class nrdh5_output(object):
             self.dt[mol]=list(dt.values())[dt_index] #use largest dt, and then subsample subspecies with smaller dt
             self.endtime[mol]=(rows[dt_index]-1)*self.dt[mol] #FIXME, use rows corresponding to correct dt, possible rows[1]?
             self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[dt_index]))
-            for mol_pop[:,val['vox']] in self.region_dict + self.region_struct_dict:
-                for (reg, val) in self.region_dict.items():
-                    self.total_trace['struct']['regions'][mol]=np.zeros((len(self.trials),rows[dt_index]))
+            if self.maxvols > 1:
+                for xdict in [self.region_dict, self.region_struct_dict]:
+                    for reg, reg_dict in xdict.values():
+                        self.total_trace[reg][mol]=np.zeros((len(self.trials),rows[dt_index]))
             #if self.dsm_vox:
                 #self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.spinelist: 
@@ -204,9 +205,9 @@ class nrdh5_output(object):
                             pop_sum=np.sum(mol_pop[:,val['vox'] ],axis=1)
                         if dt[subspecie] != self.dt[mol]: #assume that subspecie_t is same for all regions and structures 
                             pop_sum=np.interp(target_t,subspecie_t, pop_sum)  
-                        self.total_trace['dsm'][mol][trialnum]+=wt*pop_sum/self.dsm_vox['vol']*self.dsm_vox['depth']/mol_per_nM_u3 
+                        self.total_trace[reg][mol][trialnum]+=wt*pop_sum/(mol_pop[:,val['vox']])*(mol_pop[:,val['depth']])/mol_per_nM_u3  #FIXME - no dsm_vox
                     if self.spinelist: 
-                        pop_sum=np.sum(mol_pop[:,val['vox'] ],axis=1)
+                        pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1) #FIXME - REVERT
                         if dt[subspecie] != self.dt[mol]: 
                             if trialnum==print_trial:
                                 print('SPINE,',subspecie,' dt subsp=',dt[subspecie],'dt mol=',self.dt[mol])
