@@ -59,20 +59,26 @@ def plot_features(dataset,feature,title):
 
 def spatial_plot(data,dataset):
     numtrials=len(data.trials)
+    
     for (fname,param) in dataset.ftuples:
-        fig,axes=pyplot.subplots(len(data.molecules),numtrials, sharex=True)
+        
+        fig,axes=pyplot.subplots(len(data.molecules),numtrials+1, sharex=True)
         fig.suptitle(fname)
         axes=fig.axes
         for imol,mol in enumerate(data.molecules):
             for trial in range(numtrials):
-               ax=imol*numtrials+trial
+               ax=imol*(numtrials+1)+trial
                axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
                                extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
                #axes[imol,trial].colorbar()
-            axes[imol*numtrials].set_ylabel (mol +', location (um)')
-        for trial in range(numtrials):
-            axes[imol*numtrials+trial].set_xlabel('time (ms)')
-             
+            axes[imol*(numtrials+1)].set_ylabel (mol +', location (um)')
+            #to plot the mean across trials
+            ax=imol*(numtrials+1)+numtrials
+            axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
+                               extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+        for trial in range(numtrials+1):
+            axes[imol*(numtrials+1)+trial].set_xlabel('time (ms)')
+
 def plot_setup(plot_molecules,data,num_spines,plottype):
     pyplot.ion()
     if len(plot_molecules)>8:
@@ -140,9 +146,9 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12):
             for regnum,reg in enumerate(region_dict.keys()):
                 axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.regions_means[param][mol][0:maxpoint],axis=0).T[regnum],
                                        label=plotlabel,color=mycolor)
-                axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
+                axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                 axis[regnum][imol].tick_params(labelsize=textsize)
-                axis[regnum][imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
+                axis[regnum][imol].set_xlabel('Time (sec)',fontsize=textsize)
         for regnum,reg in enumerate(region_dict.keys()):
             axis[regnum][imol].legend(fontsize=legtextsize, loc='best')                
 
@@ -158,7 +164,7 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
     print('***************','shape of axis', np.shape(axis))
     for (fname,param) in dataset.ftuples:
         #First, determine the color scaling
-        if len(dataset.ftuples)==1: 
+        if len(dataset.ftuples)==1 and num_spines==1: 
             mycolor=[0,0,0]
             plotlabel=''
         else:
@@ -170,20 +176,23 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
             if num_spines>1 and plottype==2:
                 for spnum,sp in enumerate(stimspines):
                     new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
-                    new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
+                    new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index]#
                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
             elif plottype==3:
-                #if len(ftuples)==1 and len(stimspines)==1:
+                if len(dataset.ftuples)==1 and len(stimspines)==1 and num_spines>1:
                 #loop over data.trials and plot trials separately, as in line 154
-                #else:
-                for spnum,sp in enumerate(stimspines):
-                    axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
-                                        label=plotlabel,color=mycolor)
-                    axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
-                    axis[spnum][imol].tick_params(labelsize=textsize)
-                    axis[spnum][imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
-                
+                    for t in range(len(dataset.trials)):
+                        mycolor=colors.colors[int(colinc[0]*t)]
+                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.spine_means[param][mol][0:maxpoint],label='trial'+str(t),color=mycolor)
+                else:
+                    for spnum,sp in enumerate(stimspines):
+                        axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
+                                            label=plotlabel,color=mycolor)
+                        axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
+                        axis[spnum][imol].tick_params(labelsize=textsize)
+                        axis[spnum][imol].set_xlabel('Time (sec)',fontsize=textsize)
+
             else:
                 if len(dataset.ftuples)==1:
                     for t in range(len(dataset.trials)):
@@ -192,14 +201,15 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
                 else:
                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][mol][0:maxpoint],axis=0),label=plotlabel,color=mycolor)
             if plottype<3:
-                axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize, fontweight='bold')
+                axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                 axis[imol].tick_params(labelsize=textsize)
-                axis[imol].set_xlabel('Time (sec)',fontsize=textsize, fontweight='bold')
+                axis[imol].set_xlabel('Time (sec)',fontsize=textsize)
     if plottype==3:
         for spnum,sp in enumerate(stimspines):
             axis[spnum][imol].legend(fontsize=legtextsize, loc='best')
     else:
-        axis[imol].legend(fontsize=legtextsize, loc='best') 
+        axis[imol].legend(fontsize=legtextsize, loc='best')
+    pyplot.tight_layout() #KEEP??????
     #fig.canvas.draw()
     return
 
