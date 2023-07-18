@@ -8,8 +8,9 @@ import numpy as np
 import h5py as h5
 from NeuroRDanal import h5utilsV2 as h5utils
 
-Avogadro=6.02214179e14 #to convert to nanoMoles
-mol_per_nM_u3=Avogadro*1e-15 #0.6022 = PUVC
+Avogadro=6.02214179e14 #molecules per nanoMole
+mol_per_nM_u3=Avogadro*1e-15 #0.6022 = PUVC, 1e-15 is liters per micron cubed
+mol_per_pM_u2=Avogadro*1e-15
 
 class nrdh5_output(object):
     def __init__(self,ftuple):
@@ -111,32 +112,40 @@ class nrdh5_output(object):
 
     def write_average(self):
         import os ########### NEED TO PUT SPATIAL STUFF IN SEPARATE FILE?
-        for mol in list(self.molecules)+list(self.tot_species.keys()):
-            outfilename=os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
-            if mol in self.molecules: 
-                output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
-                output_std=np.std(self.OverallMean[mol],axis=0)
-                time=self.time[mol]
-            elif mol in self.tot_species.keys():
-                output_means=np.mean(self.total_trace['Overall'][mol],axis=0)
-                output_std=np.std(self.total_trace['Overall'][mol],axis=0)
-                time=np.linspace(0,self.endtime[mol], len(output_means))
-            mean_header=mol+'_'.join([str(q) for q in self.parval])+'_All '
-            if self.maxvols>1:
-                for mean_dict in self.means.values():
-                    output_means=np.column_stack((output_means,np.mean(mean_dict[mol],axis=0)))
-                    output_std=np.column_stack((output_std,np.std(mean_dict[mol],axis=0)))
-                for label in self.output_labels.values():
-                    mean_header=mean_header+label[mol]
-            std_header='_std '.join(mean_header.split())
-            output_header='Time '+ mean_header+std_header+'_std\n'
-            #print(outfilename,output_header)
-            f=open(outfilename, 'w')
-            f.write(output_header)
-            np.savetxt(f, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ')
-            f.close()
+        for mol_set in [self.molecules,self.tot_species.keys()]:
+            for mol in mol_set:
+                outfilename=os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
+                col_name='_'.join([str(q) for q in self.parval])
+                mean_header=mol+col_name+'_All ' #first non-time column of header
+                if mol in self.molecules: 
+                    output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
+                    output_std=np.std(self.OverallMean[mol],axis=0)
+                    time=self.time[mol]
+                    if self.maxvols>1:
+                        for mean_dict in self.means.values():
+                            output_means=np.column_stack((output_means,np.mean(mean_dict[mol],axis=0)))
+                            output_std=np.column_stack((output_std,np.std(mean_dict[mol],axis=0)))
+                        for label in self.output_labels.values():
+                            mean_header=mean_header+label[mol]
+                elif mol in self.tot_species.keys():
+                    output_means=np.mean(self.total_trace['Overall'][mol],axis=0)
+                    output_std=np.std(self.total_trace['Overall'][mol],axis=0)
+                    time=np.linspace(0,self.endtime[mol], len(output_means))
+                    if self.maxvols>1:
+                        for reg in list(self.total_trace.keys())[1:]:
+                               output_means=np.column_stack((output_means,np.mean(self.total_trace[reg][mol],axis=0)))
+                               output_std=np.column_stack((output_std,np.std(self.total_trace[reg][mol],axis=0)))
+                               mean_header=mean_header+' '+mol+col_name+'_'+reg
+                std_header='_std '.join(mean_header.split())
+                output_header='Time '+ mean_header+' '+std_header+'_std\n'
+                #print(outfilename,output_header)
+                f=open(outfilename, 'w')
+                f.write(output_header)
+                np.savetxt(f, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ')
+                f.close()             
+        
     #
-    #FOR SIGNATURE:
+    #FOR SIGNATURE: use this code, but specify which molecules to total for the signature
     #add option to baseline subtract - separate function?
     def total_subspecies(self,tot_species,sub_species,start_end,outset='__main__',weights={}):
         print_trial=-1 #set to 0 for debugging output
@@ -228,3 +237,8 @@ class nrdh5_output(object):
                 dsm_max=np.mean(np.max(self.means['struct'][mol][:,self.ssend[mol]:,self.dsm_index],axis=1),axis=0)
                 outputline+="   dend sm: %8.4f pk %8.4f" %(dsm_mean,dsm_max)
             print(outputline)
+
+
+
+#                        self.total_trace['dsm'][mol][trialnum]+=wt*(pop_sum/self.dsm_vox['vol'])*self.dsm_vox['depth']/mol_per_pM_u2
+            
