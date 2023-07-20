@@ -40,10 +40,10 @@ class nrdh5_output(object):
             else:
                 self.stim_spine_index=-1
             #create "group" dictionary-spinelist & spinevox, with one more for nonspine voxels
-        dsm_name=dendname+submembname
-        if dsm_name in self.region_struct_dict.keys():
-            self.dsm_vox=self.region_struct_dict[dsm_name]
-            self.dsm_index=list(self.region_struct_dict.keys()).index(dsm_name)
+        self.dsm_name=dendname+submembname
+        if self.dsm_name in self.region_struct_dict.keys():
+            self.dsm_vox=self.region_struct_dict[self.dsm_name]
+            self.dsm_index=list(self.region_struct_dict.keys()).index(self.dsm_name)
             
     def spatial_structures(self,bins,dendname):
         self.spatial_dict=h5utils.spatial_average(bins,dendname,self.data['model']['grid'])
@@ -168,8 +168,8 @@ class nrdh5_output(object):
             self.total_trace['Overall'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.maxvols > 1:
                 for xdict in [self.region_dict, self.region_struct_dict]:
-                    for reg, reg_dict in xdict.values():
-                        self.total_trace[reg][mol]=np.zeros((len(self.trials),rows[dt_index]))
+                    for reg, reg_dict in xdict.items():
+                        self.total_trace[reg][mol]=np.zeros((len(self.trials),rows[dt_index]))       
             #if self.dsm_vox:
                 #self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.spinelist: 
@@ -201,13 +201,16 @@ class nrdh5_output(object):
                     self.total_trace['Overall'][mol][trialnum]+=wt*pop_sum/self.TotVol/mol_per_nM_u3
                     #then total sub_species in submembrane and spine head, if they exist  
                     if self.maxvols > 1:
-                        for reg,val in self.region_dict.items():
-                            pop_sum=np.sum(mol_pop[:,val['vox'] ],axis=1)
-                        if dt[subspecie] != self.dt[mol]: #assume that subspecie_t is same for all regions and structures 
-                            pop_sum=np.interp(target_t,subspecie_t, pop_sum)  
-                        self.total_trace[reg][mol][trialnum]+=wt*pop_sum/(mol_pop[:,val['vox']])*(mol_pop[:,val['depth']])/mol_per_nM_u3  #FIXME - no dsm_vox
+                        for ydict in [self.region_dict, self.region_struct_dict]:
+                            for reg,val in ydict.items():   
+                                pop_sum=np.sum(mol_pop[:,val['vox'] ],axis=1)
+                                if dt[subspecie] != self.dt[mol]: #assume that subspecie_t is same for all regions and structures 
+                                    pop_sum=np.interp(target_t,subspecie_t, pop_sum)  
+                                self.total_trace[reg][mol][trialnum]+=wt*pop_sum/val['vol']/mol_per_nM_u3
+                                if reg == self.dsm_name:
+                                    self.total_trace[reg][mol][trialnum]*self.region_struct_dict[self.dsm_name]['depth']
                     if self.spinelist: 
-                        pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1) #FIXME - REVERT
+                        pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)
                         if dt[subspecie] != self.dt[mol]: 
                             if trialnum==print_trial:
                                 print('SPINE,',subspecie,' dt subsp=',dt[subspecie],'dt mol=',self.dt[mol])
@@ -217,7 +220,7 @@ class nrdh5_output(object):
             if self.spinelist:
                 outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
             if self.dsm_vox:
-                outputline +=',  dsm: '+str(np.round(self.total_trace['dsm'][mol][0,0],3))+' pSD'
+                outputline +=',  dsm: '+str(np.round(self.total_trace[self.dsm_name][mol][0,0],3))+' pSD'
             print(outputline)
   
     def print_head_stats(self):
