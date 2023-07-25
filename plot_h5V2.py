@@ -57,28 +57,37 @@ def plot_features(dataset,feature,title):
         pyplot.legend()
 #IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
-def spatial_plot(data,dataset):
+def spatial_plot(data,dataset,plot_trials=0):
     numtrials=len(data.trials)
-    
-    for (fname,param) in dataset.ftuples:
+    if plot_trials==0:
+        fig,axes=pyplot.subplots(len(data.molecules),len(dataset.ftuples), sharex=True)
         
-        fig,axes=pyplot.subplots(len(data.molecules),numtrials+1, sharex=True)
-        fig.suptitle(fname)
+    for par,(fname,param) in enumerate(dataset.ftuples):
+        if plot_trials==1:
+            fig,axes=pyplot.subplots(len(data.molecules),numtrials+1, sharex=True)
+            fig.suptitle(fname)
         axes=fig.axes
         for imol,mol in enumerate(data.molecules):
-            for trial in range(numtrials):
-               ax=imol*(numtrials+1)+trial
-               axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
-                               extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
-               #axes[imol,trial].colorbar()
-            axes[imol*(numtrials+1)].set_ylabel (mol +', location (um)')
-            #to plot the mean across trials
-            ax=imol*(numtrials+1)+numtrials
-            axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
-                               extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
-        for trial in range(numtrials+1):
-            axes[imol*(numtrials+1)+trial].set_xlabel('time (ms)')
-
+            if plot_trials==1:
+                for trial in range(numtrials):
+                   ax=imol*(numtrials+1)+trial
+                   axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
+                                   extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+                   #axes[imol,trial].colorbar()
+                axes[imol*(numtrials+1)].set_ylabel (mol +', location (um)')
+                #to plot the mean across trials
+                ax=imol*(numtrials+1)+numtrials
+                axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
+                                   extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+                for trial in range(numtrials+1):
+                    axes[imol*(numtrials+1)+trial].set_xlabel('time (ms)')
+            else:
+                ax=imol*(len(dataset.ftuples))+par
+                axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
+                            extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+            axes[imol*(len(dataset.ftuples))].set_ylabel (mol +', location (um)')
+        axes[imol*(len(dataset.ftuples))+par].set_xlabel('time (ms)')
+        axes[par].set_title(param[0])            
 def plot_setup(plot_molecules,data,num_spines,plottype):
     pyplot.ion()
     if len(plot_molecules)>8:
@@ -180,7 +189,7 @@ def plottrace(plotmol,dataset,fig,colinc,scale,stimspines,plottype,textsize=12):
                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.spine_means[param][mol][0:maxpoint],axis=0).T[spnum],
                                      label=plotlabel+sp.split('[')[-1][0:-1],color=new_col)
             elif plottype==3:
-                if len(dataset.ftuples)==1 and len(stimspines)==1 and num_spines>1:
+                if len(dataset.ftuples)==1 and len(stimspines)==1:# and num_spines>1:
                 #loop over data.trials and plot trials separately, as in line 154
                     for t in range(len(dataset.trials)):
                         mycolor=colors.colors[int(colinc[0]*t)]
