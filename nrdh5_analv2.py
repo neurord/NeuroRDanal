@@ -37,26 +37,26 @@ from NeuroRDanal.h5utilsV2 import parse_args,get_tot
 
 #probably should add most of these to args with defaults 
 submembname='sub'
-dendname="other"
+dendname="dend"
 spinehead="head"
-stimspine=[] #list of stimulated spines
+stimspine=['sa1[0]'] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=0 #one file per molecules per input file
+write_output=1 #one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
-showplot=1 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
+showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
-textsize=10
-feature_list=[]#'amplitude']
+textsize=8
+feature_list=[]#['amplitude','auc']
 #these molecules MUST be specified as plot_molecules
-mol_pairs=[]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
-pairs_timeframe=[]#[200,2000] #units are sec
+mol_pairs=[]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
+pairs_timeframe=[0,600]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
-
+#write_trials=True
 ############## END OF PARAMETERS #################
 try:
     args = ARGS.split()
@@ -113,6 +113,7 @@ for fnum,ftuple in enumerate(og.ftuples):
             print (inject_sp.split()[-1].rjust(20),inject_num[imol])
     if print_head_stats:
         data.print_head_stats()
+        
 #extract some features from the group of data files
 #EXTRACT FEATURES OF total array to add in sig.py functionality
 #Default numstim = 1, so that parameter not needed for single pulse
@@ -120,9 +121,10 @@ for fnum,ftuple in enumerate(og.ftuples):
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
 og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
-
 if len(feature_list):
     og.write_features(feature_list,params.fileroot,params.write_trials)
+if output_auc:
+        og.write_features(feature_list,params.fileroot,params.write_trials)
 #################
 #print all the features in nice format.
 features=[k[0:7] for k in og.feature_dict.keys()]
