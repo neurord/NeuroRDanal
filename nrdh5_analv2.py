@@ -6,7 +6,7 @@ Created on Thu Apr 23 10:58:05 2020
 #from outside python, type python nrdh5_analv2,py subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file
 from within python, type 
      ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
-     execfile('path/to/file/nrdh5_anal.py')
+     exec(open(('path/to/file/nrdh5_anal.py').read())
 
 #-par:
 #  par1 and optionally par2 are specifications of parameter variations, as follows:
@@ -26,7 +26,10 @@ from within python, type
 #e.g. ARGS="plc/Model_PLCassay_Ca1,Ca Gaq,GTP IP3"
 
 additional parameters lines 27-48
+
 """
+ARGS='../Model_Cof -par HSJCF -mol Cof pCof Cofactin -tot tot_species'
+
 import numpy as np
 import sys
 
@@ -61,7 +64,7 @@ aucend=None#600#end time for calculating auc, or None to calculate end time auto
 try:
     args = ARGS.split()
     print("ARGS =", ARGS, "commandline=", args)
-    do_exit = False
+    do_exit = False 
 except NameError: #NameError refers to an undefined variable (in this case ARGS)
     args = sys.argv[1:]
     import os

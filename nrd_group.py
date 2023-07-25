@@ -13,10 +13,8 @@ class nrdh5_group(object):
         self.ftuples,self.parlist,self.params=h5utils.create_filenames(fileroot,parameters)
         self.file_set_conc={k[1]:{} for k in self.ftuples} 
         self.time_set={k[1]:{} for k in self.ftuples}
-        self.spatial_means={k[1]:{} for k in self.ftuples}
-        self.regions_means={k[1]:{} for k in self.ftuples}
-        self.regions_structure_means={k[1]:{} for k in self.ftuples}
-        self.spine_means={k[1]:{} for k in self.ftuples}
+        self.means={reg:{k[1]:{} for k in self.ftuples} for reg  in ['region','struct','space','spines']}
+
         if len(tot_species):
             self.tot_species=tot_species
             self.endtime={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
@@ -36,12 +34,12 @@ class nrdh5_group(object):
             self.time_set[data.parval][molecule]=data.time[molecule]
             self.file_set_conc[data.parval][molecule]=data.OverallMean[molecule]
             if data.maxvols>1:
-                self.regions_means[data.parval][molecule]=data.means['region'][molecule]
-                self.regions_structure_means[data.parval][molecule]=data.means['struct'][molecule]
+                self.means['region'][data.parval][molecule]=data.means['region'][molecule]
+                self.means['struct'][data.parval][molecule]=data.means['struct'][molecule]
                 if data.spatial_dict:
-                    self.spatial_means[data.parval][molecule]=data.means['space'][molecule]
+                    self.means['space'][data.parval][molecule]=data.means['space'][molecule]
                 if data.spinelist:
-                    self.spine_means[data.parval][molecule]=data.means['spines'][molecule]
+                    self.means['spines'][data.parval][molecule]=data.means['spines'][molecule]
             else:
                 self.spatial_data=None
         if len(self.tot_species):
