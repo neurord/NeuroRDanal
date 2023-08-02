@@ -51,7 +51,8 @@ def plot_features(dataset,feature,title):
                 pyplot.scatter(xvals,new_yvals[:,col],label=dataset.params[label_index]+' '+str(label))
             pyplot.xlabel(dataset.params[xval_index])
         else: #just plot feature values vs param or param combo            
-            pyplot.scatter(xvals,dataset.mean_feature[feature][imol,:], label=mol)
+            for regnum,key in enumerate(dataset.file_set_tot.keys()):           
+                pyplot.scatter(xvals,dataset.mean_feature[feature][imol,:,regnum], label=mol+key)
             pyplot.xlabel('-'.join(dataset.params))
         pyplot.ylabel(mol+' '+feature)
         pyplot.legend()
@@ -263,14 +264,16 @@ def plotss(plot_mol,xparval,ss):
     fig.canvas.draw()
     return
 
-def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[]):
+def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[],regions=None):
     numcols=len(tot_species)
     #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
-    numrows= len(dataset.file_set_tot.keys()) 
+    if not regions:
+        regions=dataset.file_set_tot.keys()
+    numrows= len(regions) 
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.manager.set_window_title(figtitle+'Totals')
     axis=fig.axes
-    for row,region in enumerate(dataset.file_set_tot.keys()):
+    for row,region in enumerate(regions):
         for i,(param,total_trace) in enumerate(dataset.file_set_tot[region].items()):
             if len(dataset.file_set_tot[region].keys())==1:
                 mycolor=[0,0,0]
