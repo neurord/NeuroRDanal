@@ -28,7 +28,6 @@ from within python, type
 additional parameters lines 27-48
 
 """
-ARGS='../Model_Cof -par HSJCF -mol Cof pCof Cofactin -tot tot_species'
 
 import numpy as np
 import sys
@@ -48,12 +47,12 @@ window_size=0.1  #number of msec on either side of peak value to average for max
 #These control what output is printed or written
 show_inject=0
 write_output=1 #one file per molecules per input file
-output_auc=0#one file per molecule per set of input files
+output_auc=1#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
 textsize=8
-feature_list=[]#['amplitude','auc']
+feature_list=['duration','auc']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[0,600]#[200,2000] #units are sec
@@ -123,20 +122,19 @@ for fnum,ftuple in enumerate(og.ftuples):
 #other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=1
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
-og.trace_features(data.trials,window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
-if len(feature_list):
+og.trace_features(window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
+if len(feature_list) and output_auc:
     og.write_features(feature_list,params.fileroot,params.write_trials)
-if output_auc:
-        og.write_features(feature_list,params.fileroot,params.write_trials)
 #################
-#print all the features in nice format.
+#print all the features in nice format - Overall values only
+regnum=0 #change this to print other regions
 features=[k[0:7] for k in og.feature_dict.keys()]
 print("file-params       molecule " +' '.join(features)+' ratio   CV')
 for fnum,ftuple in enumerate(og.ftuples):
     for imol,mol in enumerate(list(og.molecules)+og.tot_species):
-        outputvals=[str(np.round(odict[imol,fnum],3)) for feat,odict in og.mean_feature.items()]
-        if og.mean_feature['baseline'][imol,fnum]>1e-5:
-            outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum]/og.mean_feature['baseline'][imol,fnum],2)).rjust(8))
+        outputvals=[str(np.round(odict[imol,fnum,regnum],3)) for feat,odict in og.mean_feature.items()]
+        if og.mean_feature['baseline'][imol,fnum,regnum]>1e-5:
+            outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum,regnum]/og.mean_feature['baseline'][imol,fnum,regnum],2)).rjust(8))
         else:
             outputvals.append('inf')
         print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals),np.std(og.feature_dict['auc'][imol,fnum])/og.mean_feature['auc'][imol,fnum])
@@ -160,7 +158,7 @@ if showplot:
         pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
-        pu5.plot_signature(tot_species,og,figtitle,col_inc,textsize=textsize)    #plot some feature values
+        pu5.plot_signature(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])    #plot some feature values
     for feat in feature_list:
         pu5.plot_features(og,feat,figtitle)
     if spatial_bins and data.maxvols>1:
@@ -169,14 +167,12 @@ if showplot:
         pu5.pairs(og,mol_pairs,pairs_timeframe)
 
 '''
-1. Test total_traces for spatial model
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     Create separate class?  Or add weight into total_species.  Add in baseline subtract as option?
     perhaps separate function to compare to thresholds
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
     lines 341-360 calculates the signature
     lines 370-387 compares to thresholds
-    #EXTRACT FEATURES OF total array to add in sig.py functionality
 
 3. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
 
