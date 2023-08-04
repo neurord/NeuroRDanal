@@ -157,8 +157,9 @@ class nrdh5_output(object):
             for xdict in [self.region_dict, self.region_struct_dict]:
                 for reg in xdict.keys():
                     self.total_trace[reg]={}
-        if self.spinelist: 
-            self.total_trace['spine']={}
+        if self.spinelist:
+            for sp in self.spinelist:
+                self.total_trace[sp]={}
         for imol,mol in enumerate(tot_species):
             mol_set=[];tot_wt=0
             #### first set up arrays of all species (sub_species) that are a form of the molecule
@@ -182,7 +183,8 @@ class nrdh5_output(object):
             #if self.dsm_vox:
                 #self.total_trace['dsm'][mol]=np.zeros((len(self.trials),rows[dt_index]))
             if self.spinelist: 
-                self.total_trace['spine'][mol]=np.zeros((len(self.trials),rows[dt_index]))
+                for sp in self.spinelist:
+                    self.total_trace[sp][mol]=np.zeros((len(self.trials),rows[dt_index]))
             #### second, find molecule index of the sub_species and total them
             for subspecie in mol_set:
                 wt=weights[subspecie] if subspecie in weights.keys() else 1
@@ -219,16 +221,18 @@ class nrdh5_output(object):
                                     self.total_trace[reg][mol][trialnum]+=wt*(pop_sum/val['vol'])*val['depth']/mol_per_pM_u2
                                 else:
                                     self.total_trace[reg][mol][trialnum]+=wt*(pop_sum/val['vol'])/mol_per_nM_u3
-                    if self.spinelist: 
-                        pop_sum=np.sum(mol_pop[:,self.region_dict[self.head]['vox']],axis=1)
-                        if dt[subspecie] != self.dt[mol]: 
-                            if trialnum==print_trial:
-                                print('SPINE,',subspecie,' dt subsp=',dt[subspecie],'dt mol=',self.dt[mol])
-                            pop_sum=np.interp(target_t,subspecie_t, pop_sum)
-                        self.total_trace['spine'][mol][trialnum]+=wt*pop_sum/self.region_dict[self.head]['vol']/mol_per_nM_u3
+                    if self.spinelist:
+                        for spnum,spname in enumerate(self.spinevox):
+                            pop_sum=np.sum(mol_pop[:,self.spinevox[spname]['vox']],axis=1)
+                            if dt[subspecie] != self.dt[mol]: 
+                                if trialnum==print_trial:
+                                    print(spname,subspecie,' dt subsp=',dt[subspecie],'dt mol=',self.dt[mol])
+                                pop_sum=np.interp(target_t,subspecie_t, pop_sum)
+                            self.total_trace[spname][mol][trialnum]+=wt*pop_sum/self.spinevox[spname]['vol']/mol_per_nM_u3
             outputline='####  '+str(self.parval)+'  >>>'+mol+' TOTAL: '+str(np.round(self.total_trace['Overall'][mol][0,0],3))+' nM'
             if self.spinelist:
-                outputline +=',  sp: '+str(np.round(self.total_trace['spine'][mol][0,0],3))+' nM'
+                for spname in self.spinevox:
+                    outputline +=', '+spname+': '+str(np.round(self.total_trace[spname][mol][0,0],3))+' nM'
             if self.dsm_vox:
                 outputline +=',  dsm: '+str(np.round(self.total_trace[self.dsm_name][mol][0,0],3))+' pSD'
             print(outputline)
