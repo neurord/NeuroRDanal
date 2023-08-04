@@ -11,9 +11,9 @@ ms_to_sec=1000
 class nrdh5_group(object): 
     def __init__(self,fileroot,parameters,tot_species=[]):
         self.ftuples,self.parlist,self.params=h5utils.create_filenames(fileroot,parameters)
-        self.file_set_conc={k[1]:{} for k in self.ftuples} 
+        self.file_set_conc={'Overall':{k[1]:{} for k in self.ftuples}}
         self.time_set={k[1]:{} for k in self.ftuples}
-        self.means={reg:{k[1]:{} for k in self.ftuples} for reg  in ['region','struct','space','spines']}
+        self.means={reg:{k[1]:{} for k in self.ftuples} for reg  in ['space']}
 
         if len(tot_species):
             self.tot_species=tot_species
@@ -30,16 +30,27 @@ class nrdh5_group(object):
         self.sstart={mol:data.sstart[mol] for mol in data.molecules}
         self.ssend={mol:data.ssend[mol] for mol in data.molecules}
         self.dt={mol:data.dt[mol] for mol in data.molecules}
+        if data.maxvols>1:
+            for reg_dict in [data.region_dict,data.region_struct_dict]:
+                for regnum,reg in enumerate(reg_dict.keys()):
+                    if reg not in self.file_set_conc.keys():
+                        self.file_set_conc[reg]={k[1]:{} for k in self.ftuples}
+            if data.spinelist:
+                for regnum,reg in enumerate(data.spinelist):
+                    if reg not in self.file_set_conc.keys():
+                        self.file_set_conc[reg]={k[1]:{} for k in self.ftuples}
         for imol,molecule in enumerate(data.molecules):
             self.time_set[data.parval][molecule]=data.time[molecule]
-            self.file_set_conc[data.parval][molecule]=data.OverallMean[molecule]
+            self.file_set_conc['Overall'][data.parval][molecule]=data.OverallMean[molecule]
             if data.maxvols>1:
-                self.means['region'][data.parval][molecule]=data.means['region'][molecule]
-                self.means['struct'][data.parval][molecule]=data.means['struct'][molecule]
+                for reg_type,reg_dict in zip(['region','struct'],[data.region_dict,data.region_struct_dict]):
+                    for regnum,reg in enumerate(reg_dict.keys()):
+                        self.file_set_conc[reg][data.parval][molecule]=data.means[reg_type][molecule][:,:,regnum]
+                if data.spinelist:
+                     for regnum,reg in enumerate(data.spinelist):
+                        self.file_set_conc[reg][data.parval][molecule]=data.means['spines'][molecule][:,:,regnum]
                 if data.spatial_dict:
                     self.means['space'][data.parval][molecule]=data.means['space'][molecule]
-                if data.spinelist:
-                    self.means['spines'][data.parval][molecule]=data.means['spines'][molecule]
             else:
                 self.spatial_data=None
         if len(self.tot_species):
@@ -53,141 +64,157 @@ class nrdh5_group(object):
                     self.dt[sp]=data.dt[sp]
                     self.endtime[data.parval][sp]=data.endtime[sp]
         
-    def trace_features(self,trials,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
+    def trace_features(self,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
         import operator
-        self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau']
-        self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples),len(trials))) for feat in self.feature_list}
-        self.mean_feature={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples))) for feat in self.feature_list}
-        self.std_feature={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples))) for feat in self.feature_list}
+        self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau', 'end_plateau']
+        self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples), len(self.file_set_tot.keys()),len(self.trials))) for feat in self.feature_list}
+        self.mean_feature={}
+        self.std_feature={}
 
-        def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoints=[-1 for t in trials],filt_length=0):
-            #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold
-            #relate is either > (operator.gt) or < (operator.lt)
-            #need to replace np.min with function in case want to find latest point
-            #print('start',startpoints,'thresh',thresh,'traces',np.shape(traces))
-            earliest_points=[np.nan for i in startpoints]
-            for i,(sp,t,endpt) in enumerate(zip(startpoints,thresh,endpoints)):
-                if not np.isnan(sp):
-                    if filt_length>0:
-                        mov_avg_filt=np.ones(filt_length)/filt_length
-                        newtraces=np.convolve(mov_avg_filt,traces[i],'same')
-                    else:
-                        newtraces=traces[i]
-                    pointset=np.where(relate(newtraces[sp:endpt],t))[0]+sp
-                    if len(pointset):
-                        earliest_points[i]=np.min(pointset)
-            return earliest_points
-        for ii,(molecules,traces) in enumerate(zip([self.molecules,self.tot_species],[self.file_set_conc,self.file_set_tot['Overall']])):
-            for parnum,(fname,par) in enumerate(self.ftuples):
-                for jmol,mol in enumerate(molecules):
-                    imol=jmol+ii*len(self.molecules)
-                    window=int(window_size/self.dt[mol]) #FIXME self.dt[mol],sstart[mol],ssend[mol]
-                    if window==0:
-                        print('trace_features_loop, window size too small for',par,mol,'dt',self.dt[mol],'window size',window_size,'using',self.dt[mol])
-                        window=1
-                    self.feature_dict['baseline'][imol,parnum,:]= np.mean(traces[par][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
-                    self.feature_dict['basestd'][imol,parnum,:]=np.std(traces[par][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
-                    peakpt=np.argmax(traces[par][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
-                    self.feature_dict['peaktime'][imol,parnum,:]=peakpt*self.dt[mol]
-                    self.feature_dict['peakval'][imol,parnum,:]=[np.mean(traces[par][mol][i,p-window:p+window]) 
-                                                                 for i,p in enumerate(peakpt)]
-                    lowpt=np.argmin(traces[par][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
-                    #DEBUGGING: peak time and peakval from mean of trace
-                    p=np.argmax(np.mean(traces[par][mol][:,self.ssend[mol]:],axis=0))+self.ssend[mol]
-                    pt=p*self.dt[mol]
-                    pval=np.mean(np.mean(traces[par][mol],axis=0)[p-window:p+window])
-                    #print('peaktime {} & peakval {} from mean trace'.format(pt,pval))
-                    #print('lowpt',mol,lowpt,'window',window,'lowval mean',np.mean([traces[par][mol][i,p-window:p+window] for i,p in enumerate(lowpt)]))
-                    #end DEBUGGING
-                    self.feature_dict['minval'][imol,parnum,:]=[np.mean(traces[par][mol][i,p-window:p+window]) 
-                                                                for i,p in enumerate(lowpt)]
-                    self.feature_dict['amplitude'][imol,parnum,:]=self.feature_dict['peakval'][imol,parnum,:]-self.feature_dict['baseline'][imol,parnum,:]
-                    ####################
-                    #FIND SLOPE OF INCREASE - Use thresholds defined by lo_thresh, and hi_thresh, e.g. 20 and 80%
-                    lo_thresh=lo_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:] #get the 5% above the max value
-                    hi_thresh=hi_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:]
-                    ssend_list=[self.ssend[mol] for t in trials]
-                    #
-                    begin_slope=exceeds_thresh_points(traces[par][mol], ssend_list, lo_thresh,operator.gt)
-                    end_slope=exceeds_thresh_points(traces[par][mol], begin_slope,hi_thresh,operator.gt)
-                    for i,(end,beg) in enumerate(zip(end_slope,begin_slope)):
-                        if end-beg>1 and ~np.isnan(end) and ~np.isnan(beg): #FIX - check for end=beg - making zero slope, or even end_slope.beginslope=1
-                            self.feature_dict['slope'][imol,parnum,i]=(self.feature_dict['peakval'][imol,parnum,i]-
-                                                                       self.feature_dict['baseline'][imol,parnum,i])/((end-beg)*self.dt[mol])
-                        else:
-                            self.feature_dict['slope'][imol,parnum,:]=np.nan                    
-                    ####################
-                    # FIND PLATEAU DURATION - USE thresholds defined by midpoints, and two different time periods
-                    #could also use thresholds defined by lo_thresh or hi_thresh
-                    midpoints=0.5*(self.feature_dict['amplitude'][imol,parnum,:])+self.feature_dict['baseline'][imol,parnum,:]
-                    start_platpt=exceeds_thresh_points(traces[par][mol],ssend_list, midpoints,operator.gt)
-                    end_platpt=exceeds_thresh_points(traces[par][mol],peakpt,midpoints,operator.gt,filt_length=filt_length)
-                    self.feature_dict['start_plateau'][imol,parnum,:]=[platpt*self.dt[mol] for platpt in start_platpt]
-                    #print('plateau',self.feature_dict['start_plateau'][imol,parnum,:],end_platpt)
-                    self.feature_dict['duration'][imol,parnum,:]=[(end-start)*self.dt[mol] 
-                                                                  for end,start in zip(end_platpt,start_platpt)]
-                    ####################
-                    # CALCULATE AUC, using baseline+stdev as threshold - possibly use this for plateau?
-                    #also use the latest stimulation time if specified
-                    stim_time=self.ssend[mol] #default.  Overwrite under some conditions
-                    if numstim>1:
-                        if iti:
-                            stim_time=int((float(iti)*(numstim-1))/self.dt[mol]+self.ssend[mol])
-                        elif len(par):
-                            testset=[i for i in par[-1] ]
-                            if np.all([i in '0123456789.' for i in testset]):
-                                stim_time=int((float(par[-1])*(numstim-1))/self.dt[mol]+self.ssend[mol])#get previous to last stimuation time
-                    if end_baseline_start:
-                        basestart=int(end_baseline_start/self.dt[mol])
-                        end_baseline=np.mean(traces[par][mol][:,basestart:],axis=1)
-                        end_basestd=np.std(traces[par][mol][:,basestart:],axis=1)
-                        self.feature_dict['auc_thresh'][imol,parnum,:]=end_baseline+std_factor*end_basestd
-                        baseline=end_baseline
-                    else:
-                        self.feature_dict['auc_thresh'][imol,parnum,:]=(self.feature_dict['baseline'][imol,parnum,:]+
-                                                                        std_factor*self.feature_dict['basestd'][imol,parnum,:])####
-                        baseline=self.feature_dict['baseline'][imol,parnum]
-                    #find latest point prior to molecule increase; find earliest point (after lastest stim) that molecule conc dips below basal
-                    peakpt_stim=np.argmax(traces[par][mol][:,stim_time:],axis=1)+stim_time
-                    #could start auc from 1st point not belowthresh, but currently not using begin_auc
-                    #need to pass np.max into function to use begin_auc
-                    begin_auc=exceeds_thresh_points(traces[par][mol],ssend_list,
-                                                          self.feature_dict['auc_thresh'][imol,parnum,:],
-                                                          operator.lt,peakpt_stim)
-                    end_auc=exceeds_thresh_points(traces[par][mol],peakpt_stim,
-                                                          self.feature_dict['auc_thresh'][imol,parnum,:],
-                                                          operator.lt,filt_length=filt_length)
-                    if aucend is not None:
-                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol] for b in baseline]
-                         print('end_auc',end_auc,'specified end auc',aucend)
-                    elif np.any(np.isnan(end_auc)):
-                         self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:]-b)*self.dt[mol] for b in baseline]
-                         print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
-                    else:
-                        self.feature_dict['auc'][imol,parnum,:]=[np.sum(traces[par][mol][i,self.ssend[mol]:end]-
-                                                                        baseline[i])*self.dt[mol] for i,end in enumerate(end_auc)]
+        molecules=self.molecules #use individual molecules for self.file_set_conc and self.means
+        ii = 0
+        for regnum, traces in enumerate(self.file_set_conc.values()):
+            print(regnum,traces.keys())
+            self.tf_base_function(window_size, molecules, traces, ii, regnum)
 
-                    #calculate mean and stdev of various features
-                    for feat in self.feature_dict.keys():
-                        self.mean_feature[feat][imol,parnum]=np.nanmean(self.feature_dict[feat][imol,parnum,:])
-                        self.std_feature[feat][imol,parnum]=np.nanstd(self.feature_dict[feat][imol,parnum,:])
+        molecules=self.tot_species
+        ii=1
+        for regnum, traces in enumerate(self.file_set_tot.values()):
+            self.tf_base_function(window_size, molecules, traces, ii, regnum)
 
-    def write_features(self,feature_list,arg0,write_trials=False):
-        outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'.txt'  #test whether this works for single file
-        print('in write_features',outfname, feature_list)
-        if len(self.ftuples)==1:
-            outputdata=arg0
-            header='file      ' 
+        for feat in self.feature_dict.keys():
+            self.mean_feature[feat]=np.nanmean(self.feature_dict[feat],axis=-1)
+            self.std_feature[feat]=np.nanstd(self.feature_dict[feat],axis=-1)
+
+    def tf_base_function(self,window_size, molecules, traces, ii, regnum, lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=1,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
+        import operator
+        for parnum,(fname,par) in enumerate(self.ftuples):
+            for jmol,mol in enumerate(molecules):
+                print(par,mol,np.shape(traces[par][mol]))
+                imol=jmol+ii*len(self.molecules)
+                window=int(window_size/self.dt[mol]) #FIXME self.dt[mol],sstart[mol],ssend[mol]
+                if window==0:
+                    print('trace_features_loop, window size too small for',par,mol,'dt',self.dt[mol],'window size',window_size,'using',self.dt[mol])
+                    window=1
+                self.feature_dict['baseline'][imol,parnum,regnum,:]= np.mean(traces[par][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
+                self.feature_dict['basestd'][imol,parnum,regnum,:]=np.std(traces[par][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
+                peakpt=np.argmax(traces[par][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
+                self.feature_dict['peaktime'][imol,parnum,regnum,:]=peakpt*self.dt[mol]
+                self.feature_dict['peakval'][imol,parnum,regnum,:]=[np.mean(traces[par][mol][i,p-window:p+window]) 
+                                                             for i,p in enumerate(peakpt)]
+                lowpt=np.argmin(traces[par][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
+                #DEBUGGING: peak time and peakval from mean of trace
+                p=np.argmax(np.mean(traces[par][mol][:,self.ssend[mol]:],axis=0))+self.ssend[mol]
+                pt=p*self.dt[mol]
+                pval=np.mean(np.mean(traces[par][mol],axis=0)[p-window:p+window])
+                #print('peaktime {} & peakval {} from mean trace'.format(pt,pval))
+                #print('lowpt',mol,lowpt,'window',window,'lowval mean',np.mean([traces[par][mol][i,p-window:p+window] for i,p in enumerate(lowpt)]))
+                #end DEBUGGING
+                self.feature_dict['minval'][imol,parnum,regnum,:]=[np.mean(traces[par][mol][i,p-window:p+window]) 
+                                                            for i,p in enumerate(lowpt)]
+                self.feature_dict['amplitude'][imol,parnum,regnum,:]=self.feature_dict['peakval'][imol,parnum,regnum,:]-self.feature_dict['baseline'][imol,parnum,regnum,:]
+                ####################
+
+                self.slope(traces[par][mol], imol, parnum, mol, regnum)
+                self.plateau_duration(traces[par][mol], imol, parnum, mol, peakpt, filt_length, regnum)
+                self.auc(traces[par][mol], imol, parnum, par, mol, numstim, std_factor, aucend, iti, end_baseline_start, filt_length, regnum)
+                
+    def slope(self, traces, imol, parnum, mol, regnum,lo_thresh_factor=0.2,hi_thresh_factor=0.8):           
+        
+        import operator        
+        #FIND SLOPE OF INCREASE - Use thresholds defined by lo_thresh, and hi_thresh, e.g. 20 and 80%
+        lo_thresh=lo_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,regnum,:])+self.feature_dict['baseline'][imol,parnum,regnum,:] #get the 5% above the max value
+        hi_thresh=hi_thresh_factor*(self.feature_dict['amplitude'][imol,parnum,regnum,:])+self.feature_dict['baseline'][imol,parnum,regnum,:]
+        self.ssend_list=[self.ssend[mol] for t in self.trials]
+        #
+        begin_slope=exceeds_thresh_points(traces, self.ssend_list, lo_thresh,operator.gt)
+        end_slope=exceeds_thresh_points(traces, begin_slope,hi_thresh,operator.gt)
+        for i,(end,beg) in enumerate(zip(end_slope,begin_slope)):
+            if end-beg>1 and ~np.isnan(end) and ~np.isnan(beg): #FIX - check for end=beg - making zero slope, or even end_slope.beginslope=1
+                self.feature_dict['slope'][imol,parnum,regnum,i]=(self.feature_dict['peakval'][imol,parnum,regnum,i]-
+                                                        self.feature_dict['baseline'][imol,parnum,regnum,i])/((end-beg)*self.dt[mol])
+            else:
+                self.feature_dict['slope'][imol,parnum,regnum,:]=np.nan                    
+        ####################
+                        
+    def plateau_duration(self, traces, imol, parnum, mol, peakpt, filt_length, regnum): 
+
+        import operator          
+        # FIND PLATEAU DURATION - USE thresholds defined by midpoints, and two different time periods
+        #could also use thresholds defined by lo_thresh or hi_thresh
+        midpoints=0.5*(self.feature_dict['amplitude'][imol,parnum,regnum,:])+self.feature_dict['baseline'][imol,parnum,regnum,:]
+        start_platpt=exceeds_thresh_points(traces, self.ssend_list, midpoints,operator.gt) #earliest point that trace exceeds threshold
+        end_platpt=exceeds_thresh_points(traces,peakpt,midpoints,operator.lt,filt_length=filt_length) #earliest point that trace exceeds threshold AFTER the peak.  shold this be .lt
+        self.feature_dict['start_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in start_platpt]
+        print_end = self.feature_dict['end_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in end_platpt]
+        print(print_end)
+        #print('plateau',self.feature_dict['start_plateau'][imol,parnum,regnum,:],end_platpt)
+        self.feature_dict['duration'][imol,parnum,regnum,:]=[(end-start)*self.dt[mol]
+                                                    for end,start in zip(end_platpt,start_platpt)]
+        ####################
+    def auc(self, traces, imol, parnum, par, mol, numstim, std_factor, aucend, iti, end_baseline_start, filt_length, regnum):                            
+        import operator
+        # CALCULATE AUC, using baseline+stdev as threshold - possibly use this for plateau?
+        #also use the latest stimulation time if specified
+        stim_time=self.ssend[mol] #default.  Overwrite under some conditions
+        if numstim>1:
+            if iti:
+                stim_time=int((float(iti)*(numstim-1))/self.dt[mol]+self.ssend[mol])
+            elif len(par):
+                testset=[i for i in par[-1] ]
+                if np.all([i in '0123456789.' for i in testset]):
+                    stim_time=int((float(par[-1])*(numstim-1))/self.dt[mol]+self.ssend[mol])#get previous to last stimuation time
+        if end_baseline_start:
+            basestart=int(end_baseline_start/self.dt[mol])
+            end_baseline=np.mean(traces[:,basestart:],axis=1)
+            end_basestd=np.std(traces[:,basestart:],axis=1)
+            self.feature_dict['auc_thresh'][imol,parnum,regnum,:]=end_baseline+std_factor*end_basestd
+            baseline=end_baseline
         else:
-            outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
-            header='-'.join([i for i in self.params])+'  '
-        header+=' '.join([m+'_'+f+'_mean ' for m in list(self.molecules)+self.tot_species for f in feature_list]+ [m+'_'+f+'_std ' for m in list(self.molecules)+self.tot_species for f in feature_list])
-        for feat in feature_list:
-            outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat].T/ms_to_sec,3),np.round(self.std_feature[feat].T/ms_to_sec,3)))
-        f=open(outfname, 'w')
-        f.write(header+'\n')        
-        np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
-        f.close() 
+            self.feature_dict['auc_thresh'][imol,parnum,regnum,:]=(self.feature_dict['baseline'][imol,parnum,regnum,:]+
+                                                            std_factor*self.feature_dict['basestd'][imol,parnum,regnum,:])####
+            baseline=self.feature_dict['baseline'][imol,parnum,regnum]
+        #find latest point prior to molecule increase; find earliest point (after lastest stim) that molecule conc dips below basal
+        peakpt_stim=np.argmax(traces[:,stim_time:],axis=1)+stim_time
+        #could start auc from 1st point not belowthresh, but currently not using begin_auc
+        #need to pass np.max into function to use begin_auc
+        begin_auc=exceeds_thresh_points(traces, self.ssend_list,
+                                            self.feature_dict['auc_thresh'][imol,parnum,regnum,:],
+                                            operator.gt,peakpt_stim) #earliest time that trace is above threshold, 
+        end_auc=exceeds_thresh_points(traces,peakpt_stim,
+                                            self.feature_dict['auc_thresh'][imol,parnum,regnum,:],
+                                            operator.lt,filt_length=filt_length) #earliest time that trace drops below threshold
+        if aucend is not None:
+            self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol] for i,b in enumerate(baseline)]
+            print('end_auc',end_auc,'specified end auc',aucend)
+        elif np.any(np.isnan(end_auc)):
+            self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:]-b)*self.dt[mol] for i,b in enumerate(baseline)]
+            print ('*********',mol,' is not returning to basal, calculating AUC to end of simulation, possibly raise your threshold **********')
+        else:
+            self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:end]-
+                                                            baseline[i])*self.dt[mol] for i,end in enumerate(end_auc)]
+            #TEST using begin_auc
+            #self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,begin:end]-
+            #                                                       baseline[i])*self.dt[mol] for i,(begin,end) in enumerate(zip([begin_auc,end_auc]))]
+ 
+    def write_features(self,feature_list,arg0,write_trials=False): #FIXME - not writing correct values
+        for regnum,reg in enumerate(self.file_set_tot.keys()):
+            outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'_'+reg+'.txt'  #test whether this works for single file
+            print('in write_features',outfname, feature_list,reg,regnum)
+            if len(self.ftuples)==1:
+                outputdata=arg0
+                header='file      ' 
+            else:
+                outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
+                header='-'.join([i for i in self.params])+'  '
+            header+=' '.join([m+'_'+f+'_mean ' for f in feature_list for m in list(self.molecules)+self.tot_species ]+ \
+                               [m+'_'+f+'_std ' for f in feature_list for m in list(self.molecules)+self.tot_species] )
+            for feat in feature_list:
+                outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat][:,:,regnum].T/ms_to_sec,3),np.round(self.std_feature[feat][:,:,regnum].T/ms_to_sec,3)))
+            f=open(outfname, 'w')
+            f.write(header+'\n')        
+            np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
+            f.close() 
 
         #write individual trials
         if write_trials:
@@ -200,7 +227,33 @@ class nrdh5_group(object):
                 f=open(outfname, 'w')
                 f.write(header+'\n')        
                 np.savetxt(f,output_data,fmt='%1s', delimiter='     ')
-                f.close() 
+                f.close()
+
+def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_length=0):
+    #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold
+    #relate is either > (operator.gt) or < (operator.lt)
+    #need to replace np.min with function in case want to find latest point
+    if not np.isscalar(endpoint):
+        endpoint_list=endpoint
+    else:
+        endpoint_list=[endpoint for t in range(len(traces))]
+    
+    earliest_points=[np.nan for i in startpoints]
+    
+    print('start',startpoints,'thresh',thresh,'traces',np.shape(traces),'endpoint', endpoint_list)
+
+    for i,(sp,t,endpt) in enumerate(zip(startpoints,thresh,endpoint_list)):
+        if not np.isnan(sp):
+            if filt_length>0:
+                mov_avg_filt=np.ones(filt_length)/filt_length
+                newtraces=np.convolve(mov_avg_filt,traces[i],'same')
+            else:
+                newtraces=traces[i]
+            pointset=np.where(relate(newtraces[sp:endpt],t))[0]+sp
+            if len(pointset):
+                earliest_points[i]=np.min(pointset)
+        return earliest_points
+
 
 
 
