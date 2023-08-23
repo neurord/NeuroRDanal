@@ -22,13 +22,12 @@ from within python, type
 #  tot_species_files containes a list of molecule forms to total, e.g. pPDE10 and pPDE10cAMP to calculate total pPDE10
 #if no parameters specified, then fileroot needs to be full filename (excluding the extension)
 
-#e.g. ARGS="../Repo/plc/Model_PLCassay,Ca GaqGTP,Ca GaqGTP Ip3,15 20" time units are sec
-#e.g. ARGS="plc/Model_PLCassay_Ca1,Ca Gaq,GTP IP3"
+#e.g. ARGS='Model_Cof -par HSJCF4trains -mol Cof pCof Cofactin -tot tot_species'
+#e.g. ARGS='Model_Cof-HSJCF4trainsspacedcrtl -mol Cof pCof Cofactin -tot tot_species'
 
 additional parameters lines 27-48
 
 """
-
 import numpy as np
 import sys
 
@@ -84,7 +83,7 @@ if params.par:
     figtitle+=' '.join(params.par)
 
 
-tot_species,weight,sub_species=get_tot(params)
+tot_species,weight,sub_species,signature,thresh=get_tot(params)
 
 num_LTP_stim=params.num_stim
 iti=params.iti
@@ -117,12 +116,11 @@ for fnum,ftuple in enumerate(og.ftuples):
         data.print_head_stats()
         
 #extract some features from the group of data files
-#EXTRACT FEATURES OF total array to add in sig.py functionality
 #Default numstim = 1, so that parameter not needed for single pulse
-#other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=1
+#other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=2
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
-og.trace_features(window_size,std_factor=1,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
+og.trace_features(window_size,std_factor=2,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
 if len(feature_list) and output_auc:
     og.write_features(feature_list,params.fileroot,params.write_trials)
 #################
@@ -138,7 +136,6 @@ for fnum,ftuple in enumerate(og.ftuples):
         else:
             outputvals.append('inf')
         print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals),np.std(og.feature_dict['auc'][imol,fnum])/og.mean_feature['auc'][imol,fnum])
-
 
 ######################### Plots
 if showplot:
@@ -158,13 +155,18 @@ if showplot:
         pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
-        pu5.plot_signature(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])    #plot some feature values
+        pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])   
     for feat in feature_list:
         pu5.plot_features(og,feat,figtitle)
     if spatial_bins and data.maxvols>1:
         pu5.spatial_plot(data,og)
     if len(mol_pairs):
         pu5.pairs(og,mol_pairs,pairs_timeframe)
+
+if len(signature):
+     og.norm_sig(signature,thresh)
+     pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
+######### Test using weight either in total_species or signature
 
 '''
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.

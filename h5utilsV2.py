@@ -341,9 +341,19 @@ def get_tot(params):
         tot_species=nm.tot_species
         weight=nm.weight
         sub_species=nm.sub_species
+        try:
+           signature=nm.signature
+        except NameError:
+            signature={}
+        try:
+           thresh=nm.thresh
+        except NameError:
+            thresh={}
     else:
         weight={}
         sub_species={}
         tot_species=[]
-    return tot_species,weight,sub_species
+        signature={}
+        thresh={}
+    return tot_species,weight,sub_species,signature,thresh
 
