@@ -267,7 +267,7 @@ def plotss(plot_mol,xparval,ss):
     fig.canvas.draw()
     return
 
-def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[],regions=None):
+def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
     numcols=len(tot_species)
     #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
     if not regions:
@@ -288,15 +288,53 @@ def plot_signature(tot_species,dataset,figtitle,colinc,textsize,thresholds=[],re
                 ax=col+row*numcols
                 newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
                 axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
-                axis[0].set_title(mol+' TOTAL',fontsize=textsize)
+                axis[col].set_title(mol+' TOTAL',fontsize=textsize)
                 axis[-1].set_xlabel('Time (sec)',fontsize=textsize)
                 axis[ax].tick_params(labelsize=textsize)
                 axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
-        if len(thresholds): #this needs to be fixed.  Determine how to match thresholds to mol/sig
-            r=(1,0)[row==0]
-            axis[ax].plot([0,newtime[-1]],[thresholds[r],thresholds[r]],color='k',linestyle= 'dashed')
-            axis[ax+1].plot([0,newtime[-1]],[thresholds[r+numcols],thresholds[r+numcols]],color='k',linestyle= 'dashed')
+    fig.canvas.draw()
+
+def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
+    numcols=len(dataset.sig) #self.sig[mol][par][region]
+    numrows= len(thresholds.keys())
+    fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
+    fig.canvas.manager.set_window_title(figtitle+' Signature')
+    axis=fig.axes
+    if len(dataset.ftuples)==1:
+        fname,param = dataset.ftuples[0]
+        for col,mol in enumerate(dataset.sig.keys()):
+            for row,(region,trace) in enumerate(dataset.sig[mol][param].items()): 
+                for t,trial in enumerate(dataset.trials):
+                    mycolor=colors.colors[int(colinc[0]*t)]
+                    ax=col+row*numcols
+                    newtime = np.arange(np.shape(trace)[1])*dataset.dt[mol] #convert from ms to sec
+                    axis[ax].plot(newtime,trace[t,:],label=trial,color=mycolor)
+                axis[row*numcols].set_ylabel(region,fontsize=textsize)
+            axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+            axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
+        axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
+    else:
+        for col,mol in enumerate(dataset.sig.keys()):
+            for i,(param,total_trace) in enumerate(dataset.sig[mol].items()):
+                mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
+                for row,(region,trace) in enumerate(total_trace.items()): 
+                    #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
+                    ax=col+row*numcols
+                    newtime = np.arange(np.shape(trace)[1])*dataset.dt[mol] #convert from ms to sec
+                    axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
+                    axis[ax].tick_params(labelsize=textsize)
+                    axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
+            axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+            axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
+            axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
+    if len(thresholds): 
+        for col,mol in enumerate(dataset.sig.keys()):
+            for param in dataset.sig[mol].keys():
+                for row,region in enumerate(thresholds.keys()):
+                    thresh_val=[thresholds[region]*amp for amp in dataset.sig_features['amplitude'][mol][param][region]]
+                    ax=col+row*numcols
+                    axis[ax].plot([0,newtime[-1]],[np.mean(thresh_val),np.mean(thresh_val)],color='gray',linestyle= 'dashed')
     fig.canvas.draw()
 
 def tweak_fig(fig,yrange,legendloc,legendaxis,legtextsize):
