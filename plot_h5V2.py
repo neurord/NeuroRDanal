@@ -296,8 +296,9 @@ def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
     fig.canvas.draw()
 
 def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
-    numcols=len(dataset.sig) #self.sig[mol][par][region]
-    numrows= len(thresholds.keys())
+    numcols=len(dataset.sig) #og.sig[mol][par][region]
+    key0=list(dataset.sig.keys())[0]
+    numrows= len(thresholds[key0].keys())
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.manager.set_window_title(figtitle+' Signature')
     axis=fig.axes
@@ -328,13 +329,12 @@ def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
             axis[col].set_title(mol+' TOTAL',fontsize=textsize)
             axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
             axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
-    if len(thresholds): 
-        for col,mol in enumerate(dataset.sig.keys()):
+    if len(thresholds[key0].keys()): 
+        for col,mol in enumerate(thresholds.keys()):
             for param in dataset.sig[mol].keys():
-                for row,region in enumerate(thresholds.keys()):
-                    thresh_val=[thresholds[region]*amp for amp in dataset.sig_features['amplitude'][mol][param][region]]
+                for row,thresh_val in enumerate(thresholds[mol].values()):
                     ax=col+row*numcols
-                    axis[ax].plot([0,newtime[-1]],[np.mean(thresh_val),np.mean(thresh_val)],color='gray',linestyle= 'dashed')
+                    axis[ax].plot([0,newtime[-1]],[thresh_val,thresh_val],color='gray',linestyle= 'dashed')
     fig.canvas.draw()
 
 def tweak_fig(fig,yrange,legendloc,legendaxis,legtextsize):
