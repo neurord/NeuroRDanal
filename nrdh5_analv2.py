@@ -166,12 +166,14 @@ if showplot:
 if len(signature):
      og.norm_sig(signature,thresh)
      pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
+     for feature in og.sig_features.keys():
+         print('FEATURE:',feature)
+         for key in og.sig_features[feature].keys():
+             print (key,':', og.sig_features[feature][key])
 ######### Test using weight either in total_species or signature
 
 '''
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
-    Create separate class?  Or add weight into total_species.  Add in baseline subtract as option?
-    perhaps separate function to compare to thresholds
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
     lines 341-360 calculates the signature
     lines 370-387 compares to thresholds
