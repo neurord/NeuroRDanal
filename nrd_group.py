@@ -67,7 +67,7 @@ class nrdh5_group(object):
     def trace_features(self,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=2,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
         import operator
         self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau', 'end_plateau']
-        self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples), len(self.file_set_tot.keys()),len(self.trials))) for feat in self.feature_list}
+        self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples), len(self.file_set_conc.keys()),len(self.trials))) for feat in self.feature_list}
         self.mean_feature={}
         self.std_feature={}
 
@@ -247,7 +247,8 @@ class nrdh5_group(object):
                     imol=self.tot_species.index(mol)+len(self.molecules)
                 print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
                 for t in range(len(self.trials)):
-                    self.norm_traces[par][region][num_denom][jmol,t]=(traces[par][mol][t,:]- self.feature_dict['baseline'][imol,parnum,regnum,t])/self.feature_dict['amplitude'][imol,parnum,regnum,t]
+                    # constrain norm between -1 and 1: 
+                    self.norm_traces[par][region][num_denom][jmol,t]=(traces[par][mol][t,:]- self.feature_dict['baseline'][imol,parnum,regnum,t])/(self.feature_dict['amplitude'][imol,parnum,regnum,t]-self.feature_dict['minval'][imol,parnum,regnum,t])
                 self.dt[num_denom]=self.dt[mol]         #FIXME: these assume that all molecules have same dt.
                 self.sstart[num_denom]=self.sstart[mol] #FIXME assumption will be true for totaled species
                 self.ssend[num_denom]=self.ssend[mol]   #FIXME, but not for other molecules
@@ -255,9 +256,10 @@ class nrdh5_group(object):
     def signature(self,mol,region,regnum,thresh,window=5):
         import operator
         for parnum,(fname,par) in enumerate(self.ftuples):
-            numerator=np.sum(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
+            #both numerator and denom will be between -1 and 1, with baseline = 0
+            numerator=np.mean(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
             if len(self.norm_traces[par][region]['denom']):
-                denom=np.sum(self.norm_traces[par][region]['denom'],axis=0) #average over molecules, dimensions are trials x time
+                denom=np.mean(self.norm_traces[par][region]['denom'],axis=0) #average over molecules, dimensions are trials x time
             else:
                 denom=1
             self.sig[mol][par][region]=numerator/denom  #2D array - trial x time
@@ -270,10 +272,16 @@ class nrdh5_group(object):
             self.sig_features['basestd'][mol][par][region]=np.std(self.sig[mol][par][region][:,self.sstart[mol]:self.ssend[mol]],axis=1)
             peakpt=np.argmax(self.sig[mol][par][region][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
             self.sig_features['peaktime'][mol][par][region]=peakpt*self.dt[mol]
+            #this should be 1.0 unless there is a bug
             self.sig_features['amplitude'][mol][par][region]=[np.mean(self.sig[mol][par][region][i,p-window:p+window]) for i,p in enumerate(peakpt)] 
-            thresh_val=[thresh[region]*amp for amp in self.sig_features['amplitude'][mol][par][region]]
+            #thresh_val=[thresh[region]*amp for amp in self.sig_features['amplitude'][mol][par][region]]
+            #use this if specify different thresholds for each key in signature
+            thresh_val=[thresh[mol][region] for t in range(len(self.trials))] 
             start_platpt=exceeds_thresh_points(self.sig[mol][par][region], self.ssend_list, thresh_val,operator.gt) #earliest point that trace exceeds threshold
-            end_platpt=exceeds_thresh_points(self.sig[mol][par][region],peakpt,thresh_val,operator.lt) #earliest point that trace exceeds threshold AFTER the peak.
+            end_platpt=exceeds_thresh_points(self.sig[mol][par][region],peakpt,thresh_val,operator.lt) #earliest point that trace drops below threshold AFTER the peak.
+            for i,ep in enumerate(end_platpt):
+                if np.isnan(ep):
+                    end_platpt[i]=len(self.sig[mol][par][region][i])
             self.sig_features['duration'][mol][par][region]=[(end-start)*self.dt[mol]
                                                     for end,start in zip(end_platpt,start_platpt)]
             self.sig_features['auc'][mol][par][region]=[np.sum(self.sig[mol][par][region][i,self.ssend[mol]:end]-thresh_val[i])*self.dt[mol] 
@@ -282,21 +290,20 @@ class nrdh5_group(object):
             self.sig_features['end_plateau'][mol][par][region]= [p*self.dt[mol] for p in end_platpt]  
 
     def norm_sig(self,signature,thresh):
-        if len(signature):
-            self.sig={key:{p[1]:{} for p in self.ftuples} for key in signature.keys()}
-            self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime']
-            self.sig_features={feat:{key:{p[1]:{} for p in self.ftuples} for key in signature.keys()} for feat in self.sig_feature_list}
-            for key,sig in signature.items():
-                num_molecules=sig['num']
-                denom_molecules=sig['denom']
-                self.norm_traces={p[1]:{reg:{'numerator':{},'denom':{}} for reg in thresh.keys()} for p in self.ftuples}
-                for region in thresh.keys():
-                    regnum=list(self.file_set_tot.keys()).index(region)
-                    self.norm(num_molecules,regnum,region,'numerator')
-                    if len(denom_molecules):
-                        self.norm(denom_molecules,regnum,region,'denom')
-                for regnum,region in enumerate(thresh.keys()):
-                    self.signature(key,region,regnum,thresh)
+        self.sig={key:{p[1]:{} for p in self.ftuples} for key in signature.keys()}
+        self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime']
+        self.sig_features={feat:{key:{p[1]:{} for p in self.ftuples} for key in signature.keys()} for feat in self.sig_feature_list}
+        for key,sig in signature.items():
+            num_molecules=sig['num']
+            denom_molecules=sig['denom']
+            self.norm_traces={p[1]:{reg:{'numerator':{},'denom':{}} for reg in thresh[key].keys()} for p in self.ftuples}
+            for region in thresh[key].keys():
+                regnum=list(self.file_set_conc.keys()).index(region)
+                self.norm(num_molecules,regnum,region,'numerator')
+                if len(denom_molecules):
+                    self.norm(denom_molecules,regnum,region,'denom')
+            for regnum,region in enumerate(thresh[key].keys()):
+                self.signature(key,region,regnum,thresh)
 
 def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_length=0):
     #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold
