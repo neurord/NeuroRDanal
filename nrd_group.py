@@ -248,7 +248,7 @@ class nrdh5_group(object):
                 print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
-                    self.norm_traces[par][region][num_denom][jmol,t]=(traces[par][mol][t,:]- self.feature_dict['baseline'][imol,parnum,regnum,t])/(self.feature_dict['amplitude'][imol,parnum,regnum,t]-self.feature_dict['minval'][imol,parnum,regnum,t])
+                    self.norm_traces[par][region][num_denom][jmol,t]=(traces[par][mol][t,:]- self.feature_dict['baseline'][imol,parnum,regnum,t])/(self.feature_dict['peakval'][imol,parnum,regnum,t]-self.feature_dict['minval'][imol,parnum,regnum,t])
                 self.dt[num_denom]=self.dt[mol]         #FIXME: these assume that all molecules have same dt.
                 self.sstart[num_denom]=self.sstart[mol] #FIXME assumption will be true for totaled species
                 self.ssend[num_denom]=self.ssend[mol]   #FIXME, but not for other molecules
