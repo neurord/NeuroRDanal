@@ -273,9 +273,10 @@ class nrdh5_group(object):
         import operator
         for parnum,(fname,par) in enumerate(self.ftuples):
             #both numerator and denom will be between -1 and 1, with baseline = 0
-            #if key == 'product':
-            #numerator=np.prod(self.norm_traces[par][region]['numerator'],axis=0) #product of molecules, dimensions are trials x time
-            numerator=np.mean(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
+            if mol == 'product':
+                numerator=np.prod(self.norm_traces[par][region]['numerator'],axis=0) #product of molecules, dimensions are trials x time
+            else:
+                numerator=np.mean(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
             if len(self.norm_traces[par][region]['denom']):
                 denom=np.mean(self.norm_traces[par][region]['denom'],axis=0) #average over molecules, dimensions are trials x time
             else:
