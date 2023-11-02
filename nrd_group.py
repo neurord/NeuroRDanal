@@ -230,33 +230,51 @@ class nrdh5_group(object):
                 np.savetxt(f,output_data,fmt='%1s', delimiter='     ')
                 f.close()
 
-    def norm(self,molecules,regnum,region,num_denom):
+    def norm(self,sig_molecules,regnum,region,num_denom):
+        all_dts=[self.dt[mol] for mol in sig_molecules] 
+        if len(np.unique(all_dts))>1:
+            #select largest dt
+            dt_index=np.argmax(list(self.dt.values()))
+        else:
+            dt_index=0
+        self.dt[num_denom]=all_dts[dt_index]
         for parnum,(fname,par) in enumerate(self.ftuples):
-            if molecules[0] in self.file_set_tot[region][par].keys():
-                traces=self.file_set_tot[region]
-            elif molecules[0] in self.file_set_conc[region][par].keys():
-                traces=self.file_set_conc[region]
+            if sig_molecules[dt_index] in self.file_set_tot[region][par].keys():                
+                trace_length=np.shape(self.file_set_tot[region][par][sig_molecules[dt_index]])[-1]
+            elif sig_molecules[dt_index] in self.file_set_conc[region][par].keys():               
+                trace_length=np.shape(self.file_set_conc[region][par][sig_molecules[dt_index]])[-1]
             else:
-                print('nrd_group, line 240. molecule',molecules[0],'not found in file_set_tot or file_set_conc')
-            trace_length=np.shape(traces[par][molecules[0]])[-1]
-            self.norm_traces[par][region][num_denom]=np.zeros((len(molecules),len(self.trials),trace_length))
-            for jmol,mol in enumerate(molecules):
+                print('nrd_group, line 240. sig molecule',sig_molecules[dt_index],'not found in file_set_tot or file_set_conc')
+            self.norm_traces[par][region][num_denom]=np.zeros((len(sig_molecules),len(self.trials),trace_length))
+            for jmol,mol in enumerate(sig_molecules):
                 if mol in self.molecules:
                     imol=self.molecules.index(mol)
+                    traces=self.file_set_conc[region]
                 elif mol in self.tot_species:
                     imol=self.tot_species.index(mol)+len(self.molecules)
+                    traces=self.file_set_tot[region]
                 print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
-                    self.norm_traces[par][region][num_denom][jmol,t]=(traces[par][mol][t,:]- self.feature_dict['baseline'][imol,parnum,regnum,t])/(self.feature_dict['peakval'][imol,parnum,regnum,t]-self.feature_dict['minval'][imol,parnum,regnum,t])
-                self.dt[num_denom]=self.dt[mol]         #FIXME: these assume that all molecules have same dt.
-                self.sstart[num_denom]=self.sstart[mol] #FIXME assumption will be true for totaled species
-                self.ssend[num_denom]=self.ssend[mol]   #FIXME, but not for other molecules
+                    if self.dt[mol]==self.dt[num_denom]:
+                        new_trace=traces[par][mol][t,:]
+                    else:
+                        #interpolate traces
+                        target_t=np.arange(trace_length)*self.dt[num_denom]
+                        trace_t=np.arange(len(traces[par][mol][t,:]))*self.dt[mol]
+                        new_trace=np.interp(target_t,trace_t,traces[par][mol][t,:])
+                    maxVal=np.max(self.feature_dict['peakval'][imol,parnum,regnum,:]) #replace parnum with : if normalized accross protcol
+                    minVal=np.min(self.feature_dict['minval'][imol,parnum,regnum,:]) #same as above 
+                    self.norm_traces[par][region][num_denom][jmol,t]=(new_trace-self.feature_dict['baseline'][imol,parnum,regnum,t])/(maxVal-minVal)
+                self.sstart[num_denom]=list(self.sstart.values())[dt_index]
+                self.ssend[num_denom]=list(self.ssend.values())[dt_index]  
     
     def signature(self,mol,region,regnum,thresh,window=5):
         import operator
         for parnum,(fname,par) in enumerate(self.ftuples):
             #both numerator and denom will be between -1 and 1, with baseline = 0
+            #if key == 'product':
+            #numerator=np.prod(self.norm_traces[par][region]['numerator'],axis=0) #product of molecules, dimensions are trials x time
             numerator=np.mean(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
             if len(self.norm_traces[par][region]['denom']):
                 denom=np.mean(self.norm_traces[par][region]['denom'],axis=0) #average over molecules, dimensions are trials x time
