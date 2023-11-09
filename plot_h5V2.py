@@ -312,7 +312,7 @@ def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
                     newtime = np.arange(np.shape(trace)[1])*dataset.dt[mol] #convert from ms to sec
                     axis[ax].plot(newtime,trace[t,:],label=trial,color=mycolor)
                 axis[row*numcols].set_ylabel(region,fontsize=textsize)
-            axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+            axis[col].set_title(mol+' SIGNATURE',fontsize=textsize)
             axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
     else:
@@ -326,7 +326,7 @@ def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
                     axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
                     axis[ax].tick_params(labelsize=textsize)
                     axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
-            axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+            axis[col].set_title(mol+' SIGNATURE',fontsize=textsize)
             axis[ax].set_xlabel('Time (sec)',fontsize=textsize)
             axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
     if len(thresholds[key0].keys()): 
