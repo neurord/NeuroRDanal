@@ -253,7 +253,9 @@ class nrdh5_group(object):
                 elif mol in self.tot_species:
                     imol=self.tot_species.index(mol)+len(self.molecules)
                     traces=self.file_set_tot[region]
-                print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
+                #print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
+                maxVal=np.max(self.feature_dict['peakval'][imol,:,regnum,:]) #replace first : with parnum to normalize separately for each potcol
+                minVal=np.min(self.feature_dict['minval'][imol,:regnum,:]) #same as above 
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
                     if self.dt[mol]==self.dt[num_denom]:
@@ -263,8 +265,6 @@ class nrdh5_group(object):
                         target_t=np.arange(trace_length)*self.dt[num_denom]
                         trace_t=np.arange(len(traces[par][mol][t,:]))*self.dt[mol]
                         new_trace=np.interp(target_t,trace_t,traces[par][mol][t,:])
-                    maxVal=np.max(self.feature_dict['peakval'][imol,parnum,regnum,:]) #replace parnum with : if normalized accross protcol
-                    minVal=np.min(self.feature_dict['minval'][imol,parnum,regnum,:]) #same as above 
                     self.norm_traces[par][region][num_denom][jmol,t]=(new_trace-self.feature_dict['baseline'][imol,parnum,regnum,t])/(maxVal-minVal)
                 self.sstart[num_denom]=list(self.sstart.values())[dt_index]
                 self.ssend[num_denom]=list(self.ssend.values())[dt_index]  
