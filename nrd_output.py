@@ -7,7 +7,7 @@ Created on Sun Apr 26 14:41:21 2020
 from tokenize import group
 import numpy as np
 import h5py as h5
-from NeuroRDanal import h5utilsV2 as h5utils
+import h5utilsV2 as h5utils
 
 Avogadro=6.02214179e14 #molecules per nanoMole
 mol_per_nM_u3=Avogadro*1e-15 #0.6022 = PUVC, 1e-15 is liters per micron cubed

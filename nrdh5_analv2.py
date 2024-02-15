@@ -28,13 +28,15 @@ from within python, type
 additional parameters lines 27-48
 
 """
+ARGS='Model_Cof -par HSJCFF -mol Cof Cofactin Ca cAMP -start 490 499 -tot tot_species'
+
 import numpy as np
 import sys
 
-from NeuroRDanal import plot_h5V2 as pu5
-from NeuroRDanal.nrd_output import nrdh5_output
-from NeuroRDanal.nrd_group import nrdh5_group
-from NeuroRDanal.h5utilsV2 import parse_args,get_tot
+import plot_h5V2 as pu5
+from nrd_output import nrdh5_output
+from nrd_group import nrdh5_group
+from h5utilsV2 import parse_args,get_tot
 
 #probably should add most of these to args with defaults 
 submembname='sub'
@@ -45,18 +47,19 @@ spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=1 #one file per molecules per input file
-output_auc=1#one file per molecule per set of input files
+write_output=0#one file per molecules per input file
+output_auc=0#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
 textsize=8
-feature_list=['duration','auc']
+feature_list=[]#['auc','duration']#['duration','auc']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[0,600]#[200,2000] #units are sec
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
+save_fig=True
 #write_trials=True
 ############## END OF PARAMETERS #################
 try:
@@ -149,13 +152,13 @@ if showplot:
         fig.canvas.manager.set_window_title(figtitle)
     pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
     if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
-        fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
+        fig2,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
         for regnum,reg in enumerate(data.region_dict):
-            fig[regnum].suptitle(figtitle+' '+reg)
-        pu5.plotregions(data.molecules,og,fig,col_inc,scale,data.region_dict,textsize=textsize)
+            fig2[regnum].suptitle(figtitle+' '+reg)
+        pu5.plotregions(data.molecules,og,fig2,col_inc,scale,data.region_dict,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
-        pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])   
+        figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])   
     for feat in feature_list:
         pu5.plot_features(og,feat,figtitle)
     if spatial_bins and data.maxvols>1:
@@ -165,18 +168,24 @@ if showplot:
 
 if len(signature):
      og.norm_sig(signature,thresh)
-     pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
+     figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
      for feature in og.sig_features.keys():
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
-######### Test using weight either in total_species or signature
 
+if save_fig==True:
+    for f,sp in zip(fig,data.spinelist):
+        f.set_size_inches((13,13))
+        f.savefig(figtitle+'_'+sp+'.png')
+    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+        for f,reg in zip(fig2,data.region_dict):
+            f.savefig(figtitle+'_'+reg+'.png')
+    figtot.savefig(figtitle+'tot.png')
+    figsig.savefig(figtitle+'sig.png')
 '''
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
-    lines 341-360 calculates the signature
-    lines 370-387 compares to thresholds
 
 3. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
 
@@ -188,5 +197,5 @@ inj_keyword='<onset>'
 #stop = onset+duration
 #sort by injtime
 #check whether injtime<=stop - if so, separate pulse?  if not continuous
-
+######### Test signature using weight either in total_species or signature
 '''

@@ -294,6 +294,7 @@ def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
                 axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
     fig.canvas.draw()
+    return fig
 
 def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
     numcols=len(dataset.sig) #og.sig[mol][par][region]
@@ -336,6 +337,7 @@ def plot_signature(dataset,thresholds,figtitle,colinc,textsize):
                     ax=col+row*numcols
                     axis[ax].plot([0,newtime[-1]],[thresh_val,thresh_val],color='gray',linestyle= 'dashed')
     fig.canvas.draw()
+    return fig
 
 def tweak_fig(fig,yrange,legendloc,legendaxis,legtextsize):
      axes=fig.axes
