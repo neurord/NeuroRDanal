@@ -230,7 +230,7 @@ class nrdh5_group(object):
                 np.savetxt(f,output_data,fmt='%1s', delimiter='     ')
                 f.close()
 
-    def norm(self,sig_molecules,regnum,region,num_denom):
+    def norm(self,sig_molecules,regnum,region,num_denom,min_max=None):
         all_dts=[self.dt[mol] for mol in sig_molecules] 
         if len(np.unique(all_dts))>1:
             #select largest dt
@@ -254,8 +254,15 @@ class nrdh5_group(object):
                     imol=self.tot_species.index(mol)+len(self.molecules)
                     traces=self.file_set_tot[region]
                 #print('NORM, line 244, par=',par,'mol=',mol,'imol=',imol,jmol,'trace len',trace_length,'dt',self.dt[mol])
-                maxVal=np.max(self.feature_dict['peakval'][imol,:,regnum,:]) #replace first : with parnum to normalize separately for each potcol
-                minVal=np.min(self.feature_dict['minval'][imol,:regnum,:]) #same as above 
+                #maxVal=np.max(self.feature_dict['peakval'][imol,:,regnum,:]) #max across trials - below first takes the mean, then takes max across protocols
+                #minVal=np.min(self.feature_dict['minval'][imol,:regnum,:]) #same as above
+                if min_max:
+                    minVal=min_max['min']
+                    maxVal=min_max['max']
+                else:
+                    maxVal=np.max(np.mean(self.feature_dict['peakval'][imol,:,regnum,:],axis=-1)) #replace first : with parnum to normalize separately for each protocol
+                    minVal=np.min(np.mean(self.feature_dict['minval'][imol,:regnum,:],axis=-1)) #same as above
+                print('norm constants for', num_denom, 'mol=', mol,'region=',region, 'max=', maxVal,'min=', minVal)
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
                     if self.dt[mol]==self.dt[num_denom]:
@@ -307,10 +314,12 @@ class nrdh5_group(object):
                                                     for i,end in enumerate(end_platpt)] #sum area above the threshold
             self.sig_features['start_plateau'][mol][par][region]= [p*self.dt[mol] for p in start_platpt]  
             self.sig_features['end_plateau'][mol][par][region]= [p*self.dt[mol] for p in end_platpt]  
+            start_dip_pt=exceeds_thresh_points(self.sig[mol][par][region], end_platpt, [0]* len(end_platpt), operator.lt) #earliest point that trace reaches below baseline
+            self.sig_features['start_dip'][mol][par][region]= [p*self.dt[mol] for p in start_dip_pt]  
 
-    def norm_sig(self,signature,thresh):
+    def norm_sig(self,signature,thresh,min_max):
         self.sig={key:{p[1]:{} for p in self.ftuples} for key in signature.keys()}
-        self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime']
+        self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime', 'start_dip']
         self.sig_features={feat:{key:{p[1]:{} for p in self.ftuples} for key in signature.keys()} for feat in self.sig_feature_list}
         for key,sig in signature.items():
             num_molecules=sig['num']
@@ -318,9 +327,15 @@ class nrdh5_group(object):
             self.norm_traces={p[1]:{reg:{'numerator':{},'denom':{}} for reg in thresh[key].keys()} for p in self.ftuples}
             for region in thresh[key].keys():
                 regnum=list(self.file_set_conc.keys()).index(region)
-                self.norm(num_molecules,regnum,region,'numerator')
+                if len(min_max):
+                    self.norm(num_molecules,regnum,region,'numerator',min_max[key]['num'])
+                else:
+                    self.norm(num_molecules,regnum,region,'numerator')
                 if len(denom_molecules):
-                    self.norm(denom_molecules,regnum,region,'denom')
+                    if len(min_max):
+                        self.norm(denom_molecules,regnum,region,'denom', min_max[key]['denom'])
+                    else:
+                        self.norm(denom_molecules,regnum,region,'denom')
             for regnum,region in enumerate(thresh[key].keys()):
                 self.signature(key,region,regnum,thresh)
 

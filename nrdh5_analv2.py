@@ -28,7 +28,7 @@ from within python, type
 additional parameters lines 27-48
 
 """
-ARGS='Model_Cof -par HSJCFF -mol Cof Cofactin Ca cAMP -start 490 499 -tot tot_species'
+ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/Model_Cof-4trains -par massed -mol Cof pCof Cofactin PKAc -tot /local/vol00/Users/klblackwell/sigpath/cofilin/tot_species'
 
 import numpy as np
 import sys
@@ -86,7 +86,7 @@ if params.par:
     figtitle+=' '.join(params.par)
 
 
-tot_species,weight,sub_species,signature,thresh=get_tot(params)
+tot_species,weight,sub_species,signature,thresh,min_max=get_tot(params)
 
 num_LTP_stim=params.num_stim
 iti=params.iti
@@ -167,7 +167,7 @@ if showplot:
         pu5.pairs(og,mol_pairs,pairs_timeframe)
 
 if len(signature):
-     og.norm_sig(signature,thresh)
+     og.norm_sig(signature,thresh,min_max)
      figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
      for feature in og.sig_features.keys():
          print('FEATURE:',feature)
