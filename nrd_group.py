@@ -148,7 +148,7 @@ class nrdh5_group(object):
         end_platpt=exceeds_thresh_points(traces,peakpt,midpoints,operator.lt,filt_length=filt_length) #earliest point that trace exceeds threshold AFTER the peak.  shold this be .lt
         self.feature_dict['start_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in start_platpt]
         print_end = self.feature_dict['end_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in end_platpt]
-        print('DURATION: mol',mol,'param',parnum,'start pt',start_platpt,'end',[round(p,2) for p in print_end])
+        #print('DURATION: mol',mol,'param',parnum,'start pt',start_platpt,'end',[round(p,2) for p in print_end])
         self.feature_dict['duration'][imol,parnum,regnum,:]=[(end-start)*self.dt[mol]
                                                     for end,start in zip(end_platpt,start_platpt)]
         ####################
@@ -184,7 +184,7 @@ class nrdh5_group(object):
         end_auc=exceeds_thresh_points(traces,peakpt_stim,
                                             self.feature_dict['auc_thresh'][imol,parnum,regnum,:],
                                             operator.lt,filt_length=filt_length) #earliest time that trace drops below threshold
-        print('AUC: mol=',mol,'param=',par,'start pt=',begin_auc,'peakpt_stim=',peakpt_stim,'end=',end_auc)
+        #print('AUC: mol=',mol,'param=',par,'start pt=',begin_auc,'peakpt_stim=',peakpt_stim,'end=',end_auc)
         if aucend is not None:
             self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol] for i,b in enumerate(baseline)]
             print('end_auc',end_auc,'specified end auc',aucend)
@@ -350,7 +350,7 @@ def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_leng
     
     earliest_points=[np.nan for i in startpoints]
     
-    print('start',startpoints,'thresh',[round(t,2) for t in thresh],'traces',np.shape(traces),'endpoint', [round(ep,3) for ep in endpoint_list])
+    #print('start',startpoints,'thresh',[round(t,2) for t in thresh],'traces',np.shape(traces),'endpoint', [round(ep,3) for ep in endpoint_list])
 
     for i,(sp,t,endpt) in enumerate(zip(startpoints,thresh,endpoint_list)):
         if not np.isnan(sp):

@@ -373,38 +373,46 @@ def plot3D(image,parval,figtitle,molecules,xvalues,time):
           axes[par].set_ylabel(parval[par])
           axes[par].set_xlabel('Time (sec)')
 
-def pairs (dataset,mol_pairs,timeframe):
+def get_trace(mol,dataset,reg,param):
+    if mol in dataset.file_set_conc[reg][param]:
+        trace=np.mean(dataset.file_set_conc[reg][param][mol], axis=0)
+    else:
+        trace=np.mean(dataset.file_set_tot[reg][param][mol], axis=0)
+    return trace
+
+def pairs (dataset,mol_pairs,timeframe,pair_region):
+    all_mols=dataset.molecules+dataset.tot_species
     for pair in mol_pairs:
-        do_plot=(pair[0] in dataset.molecules) and (pair[1] in dataset.molecules) 
+        do_plot=(pair[0] in all_mols) and (pair[1] in all_mols) 
         if do_plot:
-            if (dataset.dt[pair[0]]==dataset.dt[pair[1]]):
-                plot_start=int(timeframe[0]/dataset.dt[pair[0]])
-                plot_end=int(timeframe[1]/dataset.dt[pair[0]])
-                pyplot.figure()
-                pyplot.title('---'.join(pair))
-                for pnum,(param,data) in enumerate(dataset.file_set_conc.items()):
+            fig,axes=pyplot.subplots(len(pair_region),1)
+            fig.suptitle('---'.join(pair))
+            for ax,reg in enumerate(pair_region):
+                for pnum,param in enumerate(dataset.file_set_conc[reg].keys()):
+                    X=get_trace(pair[0],dataset,reg,param)
+                    Y=get_trace(pair[1],dataset,reg,param)
                     labl='-'.join([str(k) for k in param])
-                    X=np.mean(data[pair[0]],axis=0)
-                    Y=np.mean(data[pair[1]],axis=0)
-                    print('pairs plot',pnum,param,data.keys(),np.shape(X),np.shape(Y))
+                    print('pairs plot',pnum,param,np.shape(X),np.shape(Y))
                     # check if molX & molY same length
                     if len(X)==len(Y):
-                        pyplot.plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=labl, linestyle='--')
+                        dt=dt=dataset.dt[pair[0]]
                     else:
                         time_vectorY=dataset.time_set[param][pair[1]]
                         time_vectorX=dataset.time_set[param][pair[0]]
                         if len(X)>len(Y):
                             X=np.interp(time_vectorY,time_vectorX,X)
+                            dt=dataset.dt[pair[1]]
                         if len(Y)>len(X):
                             Y=np.interp(time_vectorX,time_vectorY,Y)
-                        pyplot.plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=labl, linestyle='--')
-                pyplot.legend()
-                pyplot.xlabel(pair[1])
-                pyplot.ylabel(pair[0])
-            else:
-                print('******* Molecules', pair, 'in ARGS but saved with different dt **********', dataset.dt[pair[0]],dataset.dt[pair[0]])               
+                            dt=dataset.dt[pair[0]]
+                    plot_start=int(timeframe[0]/dt)
+                    plot_end=int(timeframe[1]/dt)
+                    axes[ax].plot(X[plot_start:plot_end],Y[plot_start:plot_end], label=labl, linestyle='--')
+                axes[ax].set_xlabel(reg+'_'+pair[1])
+                axes[ax].set_ylabel(reg+'_'+pair[0])
+            axes[-1].legend()             
         else:
-            print('******* Molecule not in ARGS****** or molecules saved with different dt **********', pair)
+            print('******* Molecule not in ARGS or not in tot_species ****************', pair)
     
 #from matplotlib.ticker import FuncFormatter
 #def other_stuff():
