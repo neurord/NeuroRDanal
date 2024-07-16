@@ -47,7 +47,7 @@ spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=0#one file per molecules per input file
+write_output=1#one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
