@@ -6,10 +6,10 @@ from matplotlib import pyplot
 legtextsize=9
      
 colors=pyplot.get_cmap('viridis')
-#colors=pyplot.get_cmap('plasma')
+colors=pyplot.get_cmap('plasma')
 colors2D=[pyplot.get_cmap('gist_heat'),pyplot.get_cmap('summer'),pyplot.get_cmap('Blues')]
 offset=[0,0,63]  #avoid the light colors in low indices for the 'Blues' map
-partial_scale=0.75 #avoid the very light colors.  Note that non-zero offset must be <= (1-partial_scale)*255
+partial_scale=0.9 #avoid the very light colors.  Note that non-zero offset must be <= (1-partial_scale)*255
 ms_to_sec=1000
 
 def xval_from_params(dataset):
