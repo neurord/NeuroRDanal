@@ -217,7 +217,7 @@ class nrdh5_group(object):
             np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
             f.close() 
 
-        #write individual trials
+        #write individual trials - might not be writing all features or features from tot_species
         if write_trials:
             #print('writing trials')
             for imol,mol in enumerate(self.molecules):
@@ -262,7 +262,8 @@ class nrdh5_group(object):
                 else:
                     maxVal=np.max(np.mean(self.feature_dict['peakval'][imol,:,regnum,:],axis=-1)) #replace first : with parnum to normalize separately for each protocol
                     minVal=np.min(np.mean(self.feature_dict['minval'][imol,:regnum,:],axis=-1)) #same as above
-                print('norm constants for', num_denom, 'mol=', mol,'region=',region, 'max=', maxVal,'min=', minVal)
+                if parnum==0:
+                    print('norm constants for', num_denom, 'mol=', mol,'region=',region, 'max=', maxVal,'min=', minVal)
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
                     if self.dt[mol]==self.dt[num_denom]:
@@ -280,7 +281,7 @@ class nrdh5_group(object):
         import operator
         for parnum,(fname,par) in enumerate(self.ftuples):
             #both numerator and denom will be between -1 and 1, with baseline = 0
-            if mol == 'product':
+            if mol.startswith('product'):
                 numerator=np.prod(self.norm_traces[par][region]['numerator'],axis=0) #product of molecules, dimensions are trials x time
             else:
                 numerator=np.mean(self.norm_traces[par][region]['numerator'],axis=0) #average over molecules, dimensions are trials x time
@@ -338,6 +339,25 @@ class nrdh5_group(object):
                         self.norm(denom_molecules,regnum,region,'denom')
             for regnum,region in enumerate(thresh[key].keys()):
                 self.signature(key,region,regnum,thresh)
+
+    def write_sig(self):
+        for key in self.sig.keys():
+            for par in self.sig[key].keys(): 
+                #self.sig[mol][par][region] #2D array - trial x time
+                par_str='_'.join([str(q) for q in par])
+                outfilename=par_str+'_'+key+'_sig.txt'
+                regions=list(self.sig[key][par].keys())
+                columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] #
+                header='Time   '+'    '.join(columns)+'\n'
+                output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1])
+                for reg in regions:
+                    output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
+                    #average and std over trials.  Alternatively - write individual trials
+                f=open(outfilename, 'w')
+                f.write(header)
+                np.savetxt(f, output_sig, fmt='%.4f', delimiter=' ')
+                f.close()             
+
 
 def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_length=0):
     #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold

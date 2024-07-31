@@ -47,7 +47,7 @@ spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=1#one file per molecules per input file
+write_output=0#one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
@@ -55,7 +55,7 @@ print_head_stats=0
 textsize=8
 feature_list=[]#['auc','duration']#['duration','auc']
 #these molecules MUST be specified as plot_molecules
-mol_pairs=[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
+mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
 pair_region=['dend','sa1[0]'] #plot mol pairs in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
@@ -174,6 +174,8 @@ if len(signature):
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
+    if write_output:
+        write_sig(og)
 
 if save_fig==True:
     for f,sp in zip(fig,data.spinelist):
