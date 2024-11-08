@@ -341,19 +341,17 @@ def get_tot(params):
         tot_species=nm.tot_species
         weight=nm.weight
         sub_species=nm.sub_species
-        try:
-           signature=nm.signature
-        except NameError:
-            signature={}
-        try:
-           thresh=nm.thresh
-        except NameError:
-            thresh={}
+        signature=nm.signature
+        thresh=nm.thresh
+        min_max=nm.min_max
     else:
         weight={}
         sub_species={}
         tot_species=[]
         signature={}
         thresh={}
-    return tot_species,weight,sub_species,signature,thresh
+        min_max={}
+    return tot_species,weight,sub_species,signature,thresh,min_max
 
+
+#min_max={'min':50, 'max': 1050}

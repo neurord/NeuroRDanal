@@ -28,7 +28,7 @@ from within python, type
 additional parameters lines 27-48
 
 """
-ARGS='Model_Cof -par HSJCFF -mol Cof Cofactin Ca cAMP -start 490 499 -tot tot_species'
+#ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/Model_Cof-4trains -par massed -mol Cof pCof Cofactin PKAc -tot /local/vol00/Users/klblackwell/sigpath/cofilin/tot_species'
 
 import numpy as np
 import sys
@@ -55,8 +55,9 @@ print_head_stats=0
 textsize=8
 feature_list=[]#['auc','duration']#['duration','auc']
 #these molecules MUST be specified as plot_molecules
-mol_pairs=[]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
-pairs_timeframe=[0,600]#[200,2000] #units are sec
+mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
+pairs_timeframe=[100,600]#[200,2000] #units are sec
+pair_region=['dend','sa1[0]'] #plot mol pairs in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
 save_fig=True
@@ -86,7 +87,7 @@ if params.par:
     figtitle+=' '.join(params.par)
 
 
-tot_species,weight,sub_species,signature,thresh=get_tot(params)
+tot_species,weight,sub_species,signature,thresh,min_max=get_tot(params)
 
 num_LTP_stim=params.num_stim
 iti=params.iti
@@ -164,15 +165,17 @@ if showplot:
     if spatial_bins and data.maxvols>1:
         pu5.spatial_plot(data,og)
     if len(mol_pairs):
-        pu5.pairs(og,mol_pairs,pairs_timeframe)
+        pu5.pairs(og,mol_pairs,pairs_timeframe,pair_region)
 
 if len(signature):
-     og.norm_sig(signature,thresh)
+     og.norm_sig(signature,thresh,min_max)
      figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
      for feature in og.sig_features.keys():
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
+    if write_output:
+        write_sig(og)
 
 if save_fig==True:
     for f,sp in zip(fig,data.spinelist):
@@ -181,8 +184,10 @@ if save_fig==True:
     if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         for f,reg in zip(fig2,data.region_dict):
             f.savefig(figtitle+'_'+reg+'.png')
-    figtot.savefig(figtitle+'tot.png')
-    figsig.savefig(figtitle+'sig.png')
+    if len(tot_species):
+        figtot.savefig(figtitle+'tot.png')
+    if len(signature):
+        figsig.savefig(figtitle+'sig.png')
 '''
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
