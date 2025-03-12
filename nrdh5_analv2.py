@@ -4,13 +4,12 @@ Created on Thu Apr 23 10:58:05 2020
 
 @author: kblackw1
 #from outside python, type python nrdh5_analv2,py subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file
-from within python, type 
-     ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
+from within python, type /fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
      exec(open(('path/to/file/nrdh5_anal.py').read())
 
 #-par:
 #  par1 and optionally par2 are specifications of parameter variations, as follows:
-#  The filenames to read in are constructed as "subdir/fileroot"+"-"+par1+"*"-"+par2+"*"
+#  The filenames to read in are constructed as "subdir/fileroot"+"-"+par1+"*"-"+parpython  /local/vol00/Users/nminingouzobon/NeuroRDanal/nrdh5_analv2.py /local/vol00/Users/nminingouzobon/cofilin/trials_set/Model_Cof-Abasal*test -par Abasal*test -mol Cof -start 0 3002+"*"
 #  DO NOT use hyphens in filenames except for preceding parameter name
 #-mol:
 #  mol1 mol2, etc are the names of molecules to process
@@ -47,7 +46,7 @@ spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial
 window_size=0.1  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=0#one file per molecules per input file
+write_output=1#one file per molecules per input file
 output_auc=0#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
@@ -61,6 +60,7 @@ pair_region=['dend','sa1[0]'] #plot mol pairs in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
 save_fig=True
+zoom = [[0,300],[300,500],[300,1000]]
 #write_trials=True
 ############## END OF PARAMETERS #################
 try:
@@ -174,20 +174,35 @@ if len(signature):
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
-    if write_output:
-        write_sig(og)
-
+     if write_output:
+        og.write_sig()
+def ZOOM_fig (figs,zoom,name):
+    if not isinstance(figs, list):
+        figs = [figs]  # Convert single Figure object to a list
+    for f in figs:
+        axis=f.axes
+        for Z in zoom:
+            axis[0].set_xlim(Z[0],Z[1])
+            f.savefig(figtitle+'_'+name+'_zoom'+ str(Z[0]) + '_' + str(Z[1]) +'.png')    
 if save_fig==True:
     for f,sp in zip(fig,data.spinelist):
         f.set_size_inches((13,13))
         f.savefig(figtitle+'_'+sp+'.png')
+    name = ''
+    ZOOM_fig(fig,zoom,name)         
     if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         for f,reg in zip(fig2,data.region_dict):
             f.savefig(figtitle+'_'+reg+'.png')
+        name = 'sp' 
+        ZOOM_fig(fig,zoom,name)
     if len(tot_species):
         figtot.savefig(figtitle+'tot.png')
+        name = 'tot' 
+        ZOOM_fig(figtot,zoom,name)
     if len(signature):
         figsig.savefig(figtitle+'sig.png')
+        name = 'sig' 
+        ZOOM_fig(figsig,zoom,name)
 '''
 2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
     pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
