@@ -257,8 +257,8 @@ class nrdh5_group(object):
                 #maxVal=np.max(self.feature_dict['peakval'][imol,:,regnum,:]) #max across trials - below first takes the mean, then takes max across protocols
                 #minVal=np.min(self.feature_dict['minval'][imol,:regnum,:]) #same as above
                 if min_max:
-                    minVal=min_max['min']
-                    maxVal=min_max['max']
+                    minVal=min_max[mol][region]['min']
+                    maxVal=min_max[mol][region]['max']
                 else:
                     maxVal=np.max(np.mean(self.feature_dict['peakval'][imol,:,regnum,:],axis=-1)) #replace first : with parnum to normalize separately for each protocol
                     minVal=np.min(np.mean(self.feature_dict['minval'][imol,:regnum,:],axis=-1)) #same as above
@@ -328,12 +328,12 @@ class nrdh5_group(object):
             self.norm_traces={p[1]:{reg:{'numerator':{},'denom':{}} for reg in thresh[key].keys()} for p in self.ftuples}
             for region in thresh[key].keys():
                 regnum=list(self.file_set_conc.keys()).index(region)
-                if len(min_max):
+                if len(min_max) and key in min_max:
                     self.norm(num_molecules,regnum,region,'numerator',min_max[key]['num'])
                 else:
                     self.norm(num_molecules,regnum,region,'numerator')
                 if len(denom_molecules):
-                    if len(min_max):
+                    if len(min_max) and key in min_max:
                         self.norm(denom_molecules,regnum,region,'denom', min_max[key]['denom'])
                     else:
                         self.norm(denom_molecules,regnum,region,'denom')
