@@ -65,6 +65,10 @@ submembname=dendname+'sub'
 decimals=4 #how many decimals to use in the updated IC file values
 info=False
 tot_info=True
+#some molecules may need to be hand tuned.  Use empty dict to avoid hand tuning
+#hand_mole_dict={}
+hand_mol_dict={'RacGDP': {'head': '4870.199', 'PSD': '7204.9958', 'dendsub': '331.9685'}, 'SSH': {'head': '11377.1493', 'PSD': '15112.6935', 'dendsub': '137.8153'}}
+
 #load the data 
 params=h5utilsV2.parse_args(args,do_exit)#h5utilsV2.argparse(args)
 if len(args[1]):
@@ -72,7 +76,7 @@ if len(args[1]):
 else:
     hand_mol=[]
 
-tot_species,weight,sub_species,signature,thresh=h5utilsV2.get_tot(params)
+tot_species,weight,sub_species,signature,thresh,min_max=h5utilsV2.get_tot(params)
 
 og=nrdh5_group(params.fileroot,params.par,tot_species) 
 for fnum,ftuple in enumerate(og.ftuples):
@@ -259,12 +263,11 @@ for imol,mol in enumerate(tot_species):
           'total in h5 (beg,end)=',round(data.total_trace['Overall'][mol][0][0],decimals),round(data.total_trace['Overall'][mol][0][-1],decimals))
        
 ############# write the new IC file ###################
-outfile=IC_filename+'h5_update.xml'
+outfile=IC_filename+'h5_updateNEW.xml'
 with open(outfile, 'wb') as out:
     out.write(ET.tostring(root))            
 
-
-hand_mol_dict={'RacGDP': {'head': '4953.1031', 'PSD': '7805.4277', 'dendsub': '340'}, 'SSH': {'head': '11770.8986', 'PSD': '17798.034', 'dendsub': '270'}}
+################## Function for hand tuning molecules ##############################
 def tune (hand_mol_dict,data,mole_conc_ic,vol):
     init_IC_mole={m:{}for m in hand_mol_dict.keys()}
     for hmol,hdata in hand_mol_dict.items():
@@ -292,10 +295,9 @@ def tune (hand_mol_dict,data,mole_conc_ic,vol):
                     region_conc[hmol]['dendcyt']-=region_conc[hmol]['dendcyt']
         print("$$$$$$$$$$$$$$$$$$$$$$",hmol,"after update by tuning",region_conc[hmol],"$$$$$$$$$$$$$$$$$$$")
 
-#if len(hand_mol):
-    #tune (hand_mol_dict,data,mole_conc_ic,vol)
-#total_conc['general']['SSH'],total_conc['Sum_specific']['SSH']=tot_cal('SSH',sub_species,IC_molecules,region_conc,mole_conc_ic,data,vol)
-
-
-
+if len(hand_mol_dict):
+    tune(hand_mol_dict,data,mole_conc_ic,vol)
+    for mol in hand_mol_dict.keys():
+        total_conc['general'][mol],total_conc['Sum_specific'][mol]=tot_cal(mol,sub_species,IC_molecules,region_conc,mole_conc_ic,data,vol)
+        print('hand tune for',mol,total_conc['general'][mol],total_conc['Sum_specific'][mol])
 
