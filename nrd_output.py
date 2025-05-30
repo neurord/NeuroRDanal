@@ -111,11 +111,11 @@ class nrdh5_output(object):
             if self.spatial_dict:
                 self.output_labels['space'][mol],self.means['space'][mol]=h5utils.region_means_dict(self,mol,self.spatial_dict)
 
-    def write_average(self):
+    def write_average(self,savedir): #one file per molecule, mean and std of all regions
         import os ########### NEED TO PUT SPATIAL STUFF IN SEPARATE FILE?
         for mol_set in [self.molecules,self.tot_species.keys()]:
             for mol in mol_set:
-                outfilename=os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
+                outfilename=savedir+os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
                 col_name='_'.join([str(q) for q in self.parval])
                 mean_header=mol+col_name+'_All ' #first non-time column of header
                 if mol in self.molecules: 
@@ -140,10 +140,7 @@ class nrdh5_output(object):
                 std_header='_std '.join(mean_header.split())
                 output_header='Time '+ mean_header+' '+std_header+'_std\n'
                 #print(outfilename,output_header)
-                f=open(outfilename, 'w')
-                f.write(output_header)
-                np.savetxt(f, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ')
-                f.close()             
+                np.savetxt(outfilename, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ', header=output_header)            
         
     #
     #FOR SIGNATURE: use this code, but specify which molecules to total for the signature

@@ -28,7 +28,7 @@ additional parameters lines 27-48
 
 """
 #ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/Model_Cof-4trains -par massed -mol Cof pCof Cofactin PKAc -tot /local/vol00/Users/klblackwell/sigpath/cofilin/tot_species'
-
+#ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof-HSJCF1trainISOcrtl -mol PKA cAMP -write_trials 1'
 import numpy as np
 import sys
 
@@ -47,22 +47,22 @@ window_size=0.1  #number of msec on either side of peak value to average for max
 #These control what output is printed or written
 show_inject=0
 write_output=1#one file per molecules per input file
-output_auc=0#one file per molecule per set of input files
+output_features=1#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
 textsize=8
-feature_list=[]#['auc','duration']#['duration','auc']
+feature_list=['baseline','amplitude']#['auc','duration']#['duration','auc']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
-pair_region=['dend','sa1[0]'] #plot mol pairs in which region?
+interest_region=['dend','sa1[0]'] #plot mol pairs and write features in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
 save_fig=True
 zoom = [[0,300],[300,500],[300,1000]]
-#write_trials=True
-############## END OF PARAMETERS #################
+
+############## END OF PARAMETERS #################s
 try:
     args = ARGS.split()
     print("ARGS =", ARGS, "commandline=", args)
@@ -92,7 +92,7 @@ tot_species,weight,sub_species,signature,thresh,min_max=get_tot(params)
 num_LTP_stim=params.num_stim
 iti=params.iti
 
-og=nrdh5_group(params.fileroot,params.par,tot_species)
+og=nrdh5_group(params.fileroot,params.par,tot_species,params.savedir)
 for fnum,ftuple in enumerate(og.ftuples):
     data=nrdh5_output(ftuple)
     data.rows_and_columns(plot_molecules,params.start,params.end)
@@ -109,7 +109,7 @@ for fnum,ftuple in enumerate(og.ftuples):
     og.conc_arrays(data)
     #Now, print or write some optional outputs
     if write_output:
-        data.write_average()
+        data.write_average(og.savedir)
     if 'event_statistics' in data.data['trial0']['output'].keys() and show_inject:
         print ("seeds", data.seeds," injection stats:")
         print('molecule             '+'    '.join(data.trials))
@@ -118,6 +118,8 @@ for fnum,ftuple in enumerate(og.ftuples):
             print (inject_sp.split()[-1].rjust(20),inject_num[imol])
     if print_head_stats:
         data.print_head_stats()
+    if params.write_trials and len(interest_region):
+        og.write_trace_trials(interest_region,params.fileroot)
         
 #extract some features from the group of data files
 #Default numstim = 1, so that parameter not needed for single pulse
@@ -125,8 +127,8 @@ for fnum,ftuple in enumerate(og.ftuples):
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
 og.trace_features(window_size,std_factor=2,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
-if len(feature_list) and output_auc:
-    og.write_features(feature_list,params.fileroot,params.write_trials)
+if len(feature_list) and output_features:
+    og.write_features(feature_list,params.fileroot,interest_region,params.write_trials)
 #################
 #print all the features in nice format - Overall values only
 regnum=0 #change this to print other regions
@@ -165,7 +167,7 @@ if showplot:
     if spatial_bins and data.maxvols>1:
         pu5.spatial_plot(data,og)
     if len(mol_pairs):
-        pu5.pairs(og,mol_pairs,pairs_timeframe,pair_region)
+        pu5.pairs(og,mol_pairs,pairs_timeframe,interest_region)
 
 if len(signature):
      og.norm_sig(signature,thresh,min_max)
@@ -183,24 +185,24 @@ def ZOOM_fig (figs,zoom,name):
         axis=f.axes
         for Z in zoom:
             axis[0].set_xlim(Z[0],Z[1])
-            f.savefig(figtitle+'_'+name+'_zoom'+ str(Z[0]) + '_' + str(Z[1]) +'.png')    
+            f.savefig(og.savedir+figtitle+'_'+name+'_zoom'+ str(Z[0]) + '_' + str(Z[1]) +'.png')    
 if save_fig==True:
     for f,sp in zip(fig,data.spinelist):
         f.set_size_inches((13,13))
-        f.savefig(figtitle+'_'+sp+'.png')
+        f.savefig(og.savedir+figtitle+'_'+sp+'.png')
     name = ''
     ZOOM_fig(fig,zoom,name)         
     if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         for f,reg in zip(fig2,data.region_dict):
-            f.savefig(figtitle+'_'+reg+'.png')
+            f.savefig(og.savedir+figtitle+'_'+reg+'.png')
         name = 'sp' 
         ZOOM_fig(fig,zoom,name)
     if len(tot_species):
-        figtot.savefig(figtitle+'tot.png')
+        figtot.savefig(og.savedir+figtitle+'tot.png')
         name = 'tot' 
         ZOOM_fig(figtot,zoom,name)
     if len(signature):
-        figsig.savefig(figtitle+'sig.png')
+        figsig.savefig(og.savedir+figtitle+'sig.png')
         name = 'sig' 
         ZOOM_fig(figsig,zoom,name)
 '''
