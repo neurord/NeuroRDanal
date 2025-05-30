@@ -158,15 +158,15 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12,regions
             mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
         #Second, plot each molecule
         for imol,mol in enumerate(plotmol):
-            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param][mol])[1])
+            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc['Overall'][param][mol])[1])
             for regnum,reg in enumerate(regions):
                 #if len(dataset.ftuples)==1:  #NEED TO TEST THIS ON MORPHOLOGY WITHOUT SPINES
                 #    for t in range(len(dataset.trials)):
                 #        mycolor=colors.colors[int(colinc[0]*t)]
-                #        axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.means['regions'][param][mol][t,0:maxpoint].T[regnum],
+                #        axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.means['regions'][param][mol][t,0:maxpoint].T,
                 #                                   label=reg+' trial'+str(t),color=mycolor)
                 #else:
-                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[reg][param][mol][0:maxpoint],axis=0).T[regnum],
+                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[reg][param][mol][0:maxpoint],axis=0).T,
                                        label=plotlabel,color=mycolor)
                 axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                 axis[regnum][imol].tick_params(labelsize=textsize)
