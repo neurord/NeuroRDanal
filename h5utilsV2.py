@@ -19,6 +19,7 @@ def parse_args(commandline,do_exit):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('fileroot', type=str, help = 'give path/to/common_name of set of experiments')
+    parser.add_argument('-savedir', type=str, help='directory for saving files if different from experiment location')
     parser.add_argument('-par',nargs="+",type=str,help='specify 1-2 parameter variations, filenames="subdir/fileroot"+"-"+par1+"*"-"+par2+"*"')
     parser.add_argument('-mol',nargs="+",type=str,help='specify names of molecles to process')
     parser.add_argument('-start',nargs='+', type=float,help='start and end time for calculating basal concentration, in sec')
