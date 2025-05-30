@@ -5,15 +5,22 @@ Created on Tue Apr 28 15:59:11 2020
 @author: kblackw1
 """
 import numpy as np
+import os
 import h5utilsV2 as h5utils
 
 ms_to_sec=1000
 class nrdh5_group(object): 
-    def __init__(self,fileroot,parameters,tot_species=[]):
+    def __init__(self,fileroot,parameters,tot_species=[],savedir=None):
         self.ftuples,self.parlist,self.params=h5utils.create_filenames(fileroot,parameters)
         self.file_set_conc={'Overall':{k[1]:{} for k in self.ftuples}}
         self.time_set={k[1]:{} for k in self.ftuples}
         self.means={reg:{k[1]:{} for k in self.ftuples} for reg  in ['space']}
+        if savedir:
+            self.savedir=savedir
+        elif os.path.dirname(fileroot):
+            self.savedir=os.path.dirname(fileroot)+'/'
+        else:
+            self.savedir=''
 
         if len(tot_species):
             self.tot_species=tot_species
@@ -198,37 +205,37 @@ class nrdh5_group(object):
             #self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,begin:end]-
             #                                                       baseline[i])*self.dt[mol] for i,(begin,end) in enumerate(zip([begin_auc,end_auc]))]
  
-    def write_features(self,feature_list,arg0,write_trials=False): #FIXME - not writing correct values
-        for regnum,reg in enumerate(self.file_set_tot.keys()):
-            outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'_'+reg+'.txt'  #test whether this works for single file
-            print('in write_features',outfname, feature_list,reg,regnum)
-            if len(self.ftuples)==1:
-                outputdata=arg0
-                header='file      ' 
-            else:
-                outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
-                header='-'.join([i for i in self.params])+'  '
-            header+=' '.join([m+'_'+f+'_mean ' for f in feature_list for m in list(self.molecules)+self.tot_species ]+ \
-                               [m+'_'+f+'_std ' for f in feature_list for m in list(self.molecules)+self.tot_species] )
-            for feat in feature_list:
-                outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat][:,:,regnum].T/ms_to_sec,3),np.round(self.std_feature[feat][:,:,regnum].T/ms_to_sec,3)))
-            f=open(outfname, 'w')
-            f.write(header+'\n')        
-            np.savetxt(f,outputdata,fmt='%1s', delimiter='     ')
-            f.close() 
+    def write_features(self,feature_list,arg0,regions,write_trials=False): #FIXME - not writing correct values
+        for regnum,reg in enumerate(self.file_set_conc.keys()): #average, one file per region, all molecules in each file
+            if reg in regions:
+                outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'_'+reg+'.txt'  #test whether this works for single file
+                print('in write_features',outfname, feature_list,reg,regnum)
+                if len(self.ftuples)==1:
+                    outputdata=arg0
+                    header='file      ' 
+                else:
+                    outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
+                    header='-'.join([i for i in self.params])+'  '
+                for feat in feature_list:
+                    outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat][:,:,regnum].T/ms_to_sec,5),np.round(self.std_feature[feat][:,:,regnum].T/ms_to_sec,5)))       
+                    header+=' '.join([m+'_'+feat+'_mean ' for m in list(self.molecules)+self.tot_species ]+ \
+                                    [m+'_'+feat+'_std ' for m in list(self.molecules)+self.tot_species] )
+                np.savetxt(outfname,outputdata,fmt='%1s', delimiter='     ', header=header)
 
-        #write individual trials - might not be writing all features or features from tot_species
+        #write individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
         if write_trials:
             #print('writing trials')
-            for imol,mol in enumerate(self.molecules):
-                outfname=arg0+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
-                params=[ftuple[1] for ftuple in self.ftuples]
-                output_data=np.column_stack((params,np.round(self.feature_dict[feat][imol,:,:]/ms_to_sec,5)))
-                header='param '+' '.join(['trial'+str(n) for n in range (np.shape(self.feature_dict[feat])[2])])
-                f=open(outfname, 'w')
-                f.write(header+'\n')        
-                np.savetxt(f,output_data,fmt='%1s', delimiter='     ')
-                f.close()
+            params=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
+            for imol,mol in enumerate(list(self.molecules)+self.tot_species):
+                outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
+                header='param  trial '
+                outputdata=params
+                for feat in feature_list:
+                    for regnum,reg in enumerate(self.file_set_conc.keys()):
+                        if reg in regions:
+                            outputdata=np.column_stack((outputdata,np.round(self.feature_dict[feat][imol,:,regnum,:]/ms_to_sec,5).flatten()))
+                            header=header+'   '+'_'.join([mol,reg,feat])      
+                np.savetxt(outfname,outputdata,fmt='%1s', delimiter='     ', header=header)
 
     def norm(self,sig_molecules,regnum,region,num_denom,min_max=None):
         all_dts=[self.dt[mol] for mol in sig_molecules] 
@@ -340,12 +347,12 @@ class nrdh5_group(object):
             for regnum,region in enumerate(thresh[key].keys()):
                 self.signature(key,region,regnum,thresh)
 
-    def write_sig(self):
+    def write_sig(self):  #one file per signature and parameter, all regions, average across trials. FIxME: write trials
         for key in self.sig.keys():
             for par in self.sig[key].keys(): 
                 #self.sig[mol][par][region] #2D array - trial x time
                 par_str='_'.join([str(q) for q in par])
-                outfilename=par_str+'_'+key+'_sig.txt'
+                outfilename=self.savedir+par_str+'_'+key+'_sig.txt'
                 regions=list(self.sig[key][par].keys())
                 columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] #
                 header='Time   '+'    '.join(columns)+'\n'
@@ -353,11 +360,25 @@ class nrdh5_group(object):
                 for reg in regions:
                     output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
                     #average and std over trials.  Alternatively - write individual trials
-                f=open(outfilename, 'w')
-                f.write(header)
-                np.savetxt(f, output_sig, fmt='%.4f', delimiter=' ')
-                f.close()             
+                np.savetxt(outfilename, output_sig, fmt='%.4f', delimiter=' ', header=header)            
 
+    #one file per parameter and molecule, only regions of interest.
+    def write_trace_trials(self, region_list,fileroot):
+        import os 
+        #### write trials for specified regions providing they are in file_set_conc
+        regions=list(set(region_list) & set(self.file_set_conc.keys()))
+        reg0=regions[0]
+        for par in self.file_set_conc[reg0].keys():
+            par_name='_'.join([str(q) for q in par])
+            for mol in self.file_set_conc[reg0][par].keys():
+                outfilename=self.savedir+os.path.splitext(os.path.basename(fileroot))[0]+'_'+par_name+'_'+mol+'_trials.txt'
+                header='Time '
+                output=self.time_set[par][mol]
+                for reg in regions: 
+                    output=np.column_stack((output,self.file_set_conc[reg][par][mol].T))
+                    header=header+' '.join(['_'.join([par_name,mol,reg,t]) for t in self.trials])
+                header=header+'\n'
+                np.savetxt(outfilename, output, fmt='%.4f', delimiter='     ',header=header)           
 
 def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_length=0):
     #Find earliest point when traces (from startpoint to endpoint) is over or under the threshold
