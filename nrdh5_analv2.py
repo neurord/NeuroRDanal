@@ -24,11 +24,10 @@ from within python, type /fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 
 #e.g. ARGS='Model_Cof -par HSJCF4trains -mol Cof pCof Cofactin -tot tot_species'
 #e.g. ARGS='Model_Cof-HSJCF4trainsspacedcrtl -mol Cof pCof Cofactin -tot tot_species'
 
-additional parameters lines 27-48
+additional parameters lines 41-63
 
 """
-#ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/Model_Cof-4trains -par massed -mol Cof pCof Cofactin PKAc -tot /local/vol00/Users/klblackwell/sigpath/cofilin/tot_species'
-#ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof-HSJCF1trainISOcrtl -mol PKA cAMP -write_trials 1'
+#ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof -par HSJCF1train*crtl -savedir /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tmp_out -mol Ca Cof Cofactin RacPAK -start 0 300 -write_trials 1 -tot /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tot_species_minmax'
 import numpy as np
 import sys
 
@@ -136,7 +135,7 @@ features=[k[0:7] for k in og.feature_dict.keys()]
 print("file-params       molecule " +' '.join(features)+' ratio   CV')
 for fnum,ftuple in enumerate(og.ftuples):
     for imol,mol in enumerate(list(og.molecules)+og.tot_species):
-        outputvals=[str(np.round(odict[imol,fnum,regnum],3)) for feat,odict in og.mean_feature.items()]
+        outputvals=[str(np.round(odict[imol,fnum,regnum],4)) for feat,odict in og.mean_feature.items()]
         if og.mean_feature['baseline'][imol,fnum,regnum]>1e-5:
             outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum,regnum]/og.mean_feature['baseline'][imol,fnum,regnum],2)).rjust(8))
         else:

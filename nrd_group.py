@@ -16,7 +16,7 @@ class nrdh5_group(object):
         self.time_set={k[1]:{} for k in self.ftuples}
         self.means={reg:{k[1]:{} for k in self.ftuples} for reg  in ['space']}
         if savedir:
-            self.savedir=savedir
+            self.savedir=savedir+'/'
         elif os.path.dirname(fileroot):
             self.savedir=os.path.dirname(fileroot)+'/'
         else:
@@ -234,7 +234,7 @@ class nrdh5_group(object):
                     for regnum,reg in enumerate(self.file_set_conc.keys()):
                         if reg in regions:
                             outputdata=np.column_stack((outputdata,np.round(self.feature_dict[feat][imol,:,regnum,:]/ms_to_sec,5).flatten()))
-                            header=header+'   '+'_'.join([mol,reg,feat])      
+                            header=header+'   '+'_'.join([mol,reg,feat])
                 np.savetxt(outfname,outputdata,fmt='%1s', delimiter='     ', header=header)
 
     def norm(self,sig_molecules,regnum,region,num_denom,min_max=None):
@@ -356,11 +356,11 @@ class nrdh5_group(object):
                 regions=list(self.sig[key][par].keys())
                 columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] #
                 header='Time   '+'    '.join(columns)+'\n'
-                output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1])
+                output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) #initialize output_trials this way also
                 for reg in regions:
                     output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
-                    #average and std over trials.  Alternatively - write individual trials
-                np.savetxt(outfilename, output_sig, fmt='%.4f', delimiter=' ', header=header)            
+                    #output_trials=np.column_stack((output_trials,self.sig[key][par][reg])) #need to transpose self.sig??  
+                np.savetxt(outfilename, output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename           
 
     #one file per parameter and molecule, only regions of interest.
     def write_trace_trials(self, region_list,fileroot):
