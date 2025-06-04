@@ -193,29 +193,29 @@ def plottrace(plotmol,dataset,fig,colinc,scale,spinelist,plottype,textsize=12):
     if len(dataset.ftuples)==1:
         fname,param = dataset.ftuples[0]
         for imol,mol in enumerate(plotmol):
-            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc['Overall'][param][mol])[1])
+            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param]['Overall'][mol])[1])
             if plottype==1: # one graph, only plotting overall conc - plot individual trials
                 for t in range(len(dataset.trials)):
                     mycolor=colors.colors[int(colinc[0]*t)]
-                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc['Overall'][param][mol][t,0:maxpoint],label='trial'+str(t),color=mycolor)
+                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[param]['Overall'][mol][t,0:maxpoint],label='trial'+str(t),color=mycolor)
             elif plottype==2:  #one figure
                 if num_spines>2: #plot spine conc, average across trials, color indexed by spine number
                     for spnum,sp in enumerate(spinelist):
                         new_col=colors.colors[int(colinc[0]*spnum)]
-                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[sp][param][mol][:,0:maxpoint],axis=0).T, label=spine_name(sp),color=new_col)
+                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][sp][mol][:,0:maxpoint],axis=0).T, label=spine_name(sp),color=new_col)
                 else:        #plot individual trials, color indexed by trial and spine num
                     for spnum,sp in enumerate(spinelist):
                         map_index=spnum #either 0 or 1
                         for t in range(len(dataset.trials)):
                             new_index=int(colinc[0]*t*partial_scale)
                             mycolor=colors2D[map_index].__call__(new_index+offset[map_index])
-                            axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[sp][param][mol][t,0:maxpoint].T,
+                            axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[param][sp][mol][t,0:maxpoint].T,
                                                    label=spine_name(sp)+' trial'+str(t),color=mycolor)
             elif plottype==3:   #each spine & non-spine on separate figure, color indexed by trial
                 for spnum,sp in enumerate(spinelist):
                     for t in range(len(dataset.trials)):
                         mycolor=colors.colors[int(colinc[0]*t)]
-                        axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[sp][param][mol][t,0:maxpoint].T,
+                        axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[param][sp][mol][t,0:maxpoint].T,
                                                label='trial'+str(t),color=mycolor)
                         axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                         axis[spnum][imol].tick_params(labelsize=textsize)
@@ -227,21 +227,21 @@ def plottrace(plotmol,dataset,fig,colinc,scale,spinelist,plottype,textsize=12):
             #Second, plot each molecule
             for imol,mol in enumerate(plotmol):
                 #axis[imol].autoscale(enable=True,tight=False)
-                maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc['Overall'][param][mol])[1])
+                maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param]['Overall'][mol])[1])
                 if num_spines>1 and plottype==2: #index color by parameter and spine number if all spines on one plot
                     for spnum,sp in enumerate(spinelist):
                         new_index=int((dataset.parlist[par_index].index(param[par_index])*num_spines+spnum)*colinc[par_index]*partial_scale)
                         new_col=colors2D[map_index].__call__(new_index+offset[map_index]) #colors.colors[new_index] #
-                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[sp][param][mol][:,0:maxpoint],axis=0).T, label=plotlabel+' '+spine_name(sp),color=new_col)
+                        axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][sp][mol][:,0:maxpoint],axis=0).T, label=plotlabel+' '+spine_name(sp),color=new_col)
                 elif plottype==3: #index color by parameter if each spine on separate plot
                     for spnum,sp in enumerate(spinelist):
-                        axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[sp][param][mol][:,0:maxpoint],axis=0).T,
+                        axis[spnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param][sp][mol][:,0:maxpoint],axis=0).T,
                                             label=plotlabel,color=mycolor)
                         axis[spnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                         axis[spnum][imol].tick_params(labelsize=textsize)
                         axis[spnum][imol].set_xlabel('Time (sec)',fontsize=textsize)
                 else: #either plottype==1 (only plot overall) or plottype==2 and only one region (also plot Overall), then use param to index color, 
-                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc['Overall'][param][mol][:,0:maxpoint],axis=0),label=plotlabel,color=mycolor)
+                    axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[param]['Overall'][mol][:,0:maxpoint],axis=0),label=plotlabel,color=mycolor)
     if plottype<3:
         for imol,mol in enumerate(plotmol):
             axis[imol].set_ylabel(mol+' (nM)',fontsize=textsize)
@@ -271,27 +271,27 @@ def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
     numcols=len(tot_species)
     #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
     if not regions:
-        regions=dataset.file_set_tot.keys()
+        regions=dataset.all_regions
     numrows= len(regions) 
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.manager.set_window_title(figtitle+'Totals')
     axis=fig.axes
-    for row,region in enumerate(regions):
-        for i,(param,total_trace) in enumerate(dataset.file_set_tot[region].items()):
-            if len(dataset.file_set_tot[region].keys())==1:
-                mycolor=[0,0,0]
-                plotlabel=''
-            else:
-                mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
-            for col,(mol,trace) in enumerate(total_trace.items()): 
-                #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
-                ax=col+row*numcols
-                newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
-                axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
-                axis[col].set_title(mol+' TOTAL',fontsize=textsize)
-                axis[-1].set_xlabel('Time (sec)',fontsize=textsize)
-                axis[ax].tick_params(labelsize=textsize)
-                axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
+    if len(dataset.file_set_tot.keys())==1:
+        mycolor=[0,0,0]
+        plotlabel=''
+    else:
+        for i,(param,total_trace) in enumerate(dataset.file_set_tot.items()):
+            mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
+            for row,region in enumerate(regions):
+                for col,(mol,trace) in enumerate(total_trace[region].items()): 
+                    #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
+                    ax=col+row*numcols
+                    newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
+                    axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
+                    axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+                    axis[-1].set_xlabel('Time (sec)',fontsize=textsize)
+                    axis[ax].tick_params(labelsize=textsize)
+                    axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
     fig.canvas.draw()
     return fig
@@ -374,10 +374,10 @@ def plot3D(image,parval,figtitle,molecules,xvalues,time):
           axes[par].set_xlabel('Time (sec)')
 
 def get_trace(mol,dataset,reg,param):
-    if mol in dataset.file_set_conc[reg][param]:
-        trace=np.mean(dataset.file_set_conc[reg][param][mol], axis=0)
+    if mol in dataset.file_set_conc[param][reg]:
+        trace=np.mean(dataset.file_set_conc[param][reg][mol], axis=0)
     else:
-        trace=np.mean(dataset.file_set_tot[reg][param][mol], axis=0)
+        trace=np.mean(dataset.file_set_tot[param][reg][mol], axis=0)
     return trace
 
 def pairs (dataset,mol_pairs,timeframe,pair_region):
@@ -395,10 +395,10 @@ def pairs (dataset,mol_pairs,timeframe,pair_region):
                     print('pairs plot',pnum,param,np.shape(X),np.shape(Y))
                     # check if molX & molY same length
                     if len(X)==len(Y):
-                        dt=dt=dataset.dt[pair[0]]
+                        dt=dataset.dt[pair[0]]
                     else:
-                        time_vectorY=dataset.time_set[param][pair[1]]
-                        time_vectorX=dataset.time_set[param][pair[0]]
+                        time_vectorY=dataset.dt[pair[1]]*np.arange(len(Y))
+                        time_vectorX=dataset.dt[pair[0]]*np.arange(len(X))
                         if len(X)>len(Y):
                             X=np.interp(time_vectorY,time_vectorX,X)
                             dt=dataset.dt[pair[1]]

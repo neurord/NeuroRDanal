@@ -27,7 +27,7 @@ from within python, type /fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 
 additional parameters lines 41-63
 
 """
-#ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof -par HSJCF1train*crtl -savedir /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tmp_out -mol Ca Cof Cofactin RacPAK -start 0 300 -write_trials 1 -tot /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tot_species_minmax'
+#ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof -par HSJCF4train*crtl -savedir /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tmp_out -mol Ca Cof Cofactin RacPAK -start 0 300 -write_trials 1 -tot /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tot_species_minmax'
 import numpy as np
 import sys
 
@@ -51,7 +51,7 @@ showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for 
 show_mol_totals=0
 print_head_stats=0
 textsize=8
-feature_list=['baseline','amplitude']#['auc','duration']#['duration','auc']
+feature_list=[]#['auc','duration']#['duration','auc']
 #these molecules MUST be specified as plot_molecules
 mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
@@ -117,8 +117,8 @@ for fnum,ftuple in enumerate(og.ftuples):
             print (inject_sp.split()[-1].rjust(20),inject_num[imol])
     if print_head_stats:
         data.print_head_stats()
-    if params.write_trials and len(interest_region):
-        og.write_trace_trials(interest_region,params.fileroot)
+if params.write_trials and len(interest_region):
+    og.write_trace_trials(interest_region,params.fileroot)
         
 #extract some features from the group of data files
 #Default numstim = 1, so that parameter not needed for single pulse
@@ -176,7 +176,10 @@ if len(signature):
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
      if write_output:
-        og.write_sig()
+        if params.write_trials and len(interest_region):
+            og.write_sig(interest_region)
+        else:
+            og.write_sig()
 def ZOOM_fig (figs,zoom,name):
     if not isinstance(figs, list):
         figs = [figs]  # Convert single Figure object to a list
