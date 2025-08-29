@@ -15,7 +15,7 @@ To run the program from within python, type
 .. code-block::
 
  ARGS="subdir/fileroot -par par1 par2 -mol mol1 mol2 -start 100 200 -tot tot_species_file"
- execfile('path/to/file/nrdh5_anal.py')
+ exec(open('path/to/file/nrdh5_anal.py').read())
 
 from outside python, type 
 
