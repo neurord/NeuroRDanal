@@ -85,7 +85,7 @@ def spatial_plot(data,dataset,plot_trials=0):
                     axes[imol*(numtrials+1)+trial].set_xlabel('time (ms)')
             else:
                 ax=imol*(len(dataset.ftuples))+par
-                axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
+                axes[ax].imshow(np.mean(dataset.means[param]['space'][mol][:],axis=0).T, aspect='auto',origin='lower',
                             extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
             axes[imol*(len(dataset.ftuples))].set_ylabel (mol +', location (um)')
         axes[imol*(len(dataset.ftuples))+par].set_xlabel('time (ms)')
