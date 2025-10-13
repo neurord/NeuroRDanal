@@ -47,7 +47,7 @@ def join_params(parval,params):
         label=parval
     return label
 
-def sstart_end(molecule_list, out_location,dt,rows,args=None):
+def sstart_end(molecule_list, out_location,dt,rows,args=None,prn=True):
     num_mols=len(molecule_list)
     sstart={}#np.zeros((num_mols),dtype=np.int)
     ssend={}#np.zeros((num_mols),dtype=np.int)
@@ -56,7 +56,7 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
             if out_location[mol]!=-1:
                 sstart[mol] = int(np.round(float(args[0]) / dt[mol]))
                 ssend[mol] = int(np.round(float(args[1]) / dt[mol]))
-                if ssend[mol]>0.5*rows[imol]:
+                if ssend[mol]>0.5*rows[imol] and prn:
                     print("WARNING*******. Possible SS time issue for",mol,": only", rows[imol], "rows")
                 if ssend[mol]>rows[imol]:
                     ssend[mol]=0.1*rows[imol]

@@ -27,7 +27,7 @@ class nrdh5_output(object):
         self.spinelist=[]
         self.dsm_vox=None
         self.spatial_dict=None
-        print('file:',self.fname,'parameters:',self.parval,'volume',self.TotVol,'voxels',self.maxvols,'trials',self.trials)
+        print('Opened file:',self.fname,', parameters:',self.parval,', volume=',self.TotVol,',voxels=',self.maxvols,', trials=',self.trials)
         
     def region_structures(self,dendname,submembname,spinehead,stimspine=None): #spinehead may not need to be parameter
         structType=self.data['model']['grid'][:]['type']
@@ -81,6 +81,7 @@ class nrdh5_output(object):
         self.ssend=ssend
         
     def molecule_population(self):
+        print('             calculating molecule_population')
         self.counts={}
         self.time={}
         self.OverallMean={}
@@ -166,7 +167,7 @@ class nrdh5_output(object):
                 mol_set=[subsp for subsp in self.all_molecules if mol in subsp] #h5utils.decode(self.data['model']['output'][outset]['species'][:])
             self.tot_species[mol]=mol_set
             out_location,dt,rows=h5utils.get_mol_info(self.data, mol_set)
-            sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,start_end)
+            sstart,ssend=h5utils.sstart_end(mol_set,out_location,dt,rows,start_end,prn=False)
             if len(np.unique(list(dt.values())))>1:
                 print('WARNING, subspecies have',mol,' have different dt',dt,'using largest and interpolating',rows)
             dt_index=np.argmax(list(dt.values()))
