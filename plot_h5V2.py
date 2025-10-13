@@ -31,7 +31,7 @@ def xval_from_params(dataset):
         labels=[]
     return xvals,labels
 
-def plot_features(dataset,feature,title):
+def plot_features(dataset,feature,title,interest_region):
     xvals,p=xval_from_params(dataset)
     if len(dataset.tot_species):
         feature_mol=dataset.molecules+dataset.tot_species
@@ -51,21 +51,23 @@ def plot_features(dataset,feature,title):
             for col,label in enumerate(labels):
                 pyplot.scatter(xvals,new_yvals[:,col],label=dataset.params[label_index]+' '+str(label))
             pyplot.xlabel(dataset.params[xval_index])
-        else: #just plot feature values vs param or param combo            
-            for regnum,key in enumerate(dataset.file_set_tot.keys()):           
-                pyplot.scatter(xvals,dataset.mean_feature[feature][imol,:,regnum], label=key)
+        else: #just plot feature values vs param or param combo 
+            key=dataset.ftuples[0][1]
+            for regnum,reg in enumerate(dataset.file_set_conc[key].keys()):
+                if reg in interest_region:
+                    pyplot.scatter(xvals,dataset.mean_feature[feature][imol,:,regnum], label=reg)
             pyplot.xlabel('-'.join(dataset.params))
         pyplot.ylabel(mol+' '+feature)
         pyplot.legend()
 #IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
-def spatial_plot(data,dataset,plot_trials=0):
+def spatial_plot(data,dataset,plot_trials=False):
     numtrials=len(data.trials)
-    if plot_trials==0:
+    if not plot_trials:
         fig,axes=pyplot.subplots(len(data.molecules),len(dataset.ftuples), sharex=True)
         
     for par,(fname,param) in enumerate(dataset.ftuples):
-        if plot_trials==1:
+        if plot_trials:
             fig,axes=pyplot.subplots(len(data.molecules),numtrials+1, sharex=True)
             fig.suptitle(fname)
         axes=fig.axes
@@ -73,22 +75,21 @@ def spatial_plot(data,dataset,plot_trials=0):
             if plot_trials==1:
                 for trial in range(numtrials):
                    ax=imol*(numtrials+1)+trial
-                   axes[ax].imshow(dataset.spatial_means[param][mol][trial].T, aspect='auto',origin='lower',
+                   axes[ax].imshow(dataset.means[param]['space'][mol][trial].T, aspect='auto',origin='lower',
                                    extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
-                   #axes[imol,trial].colorbar()
                 axes[imol*(numtrials+1)].set_ylabel (mol +', location (um)')
                 #to plot the mean across trials
                 ax=imol*(numtrials+1)+numtrials
-                axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
-                                   extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+                axes[ax].set_title('mean')
                 for trial in range(numtrials+1):
                     axes[imol*(numtrials+1)+trial].set_xlabel('time (ms)')
             else:
                 ax=imol*(len(dataset.ftuples))+par
-                axes[ax].imshow(np.mean(dataset.spatial_means[param][mol][:],axis=0).T, aspect='auto',origin='lower',
-                            extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
-            axes[imol*(len(dataset.ftuples))].set_ylabel (mol +', location (um)')
-        axes[imol*(len(dataset.ftuples))+par].set_xlabel('time (ms)')
+                axes[ax].set_xlabel('time (ms)')
+                axes[imol*(len(dataset.ftuples))].set_ylabel (mol +', location (um)')
+            shw=axes[ax].imshow(np.mean(dataset.means[param]['space'][mol][:],axis=0).T, aspect='auto',origin='lower',
+                        extent=[0, np.max(dataset.time_set[param][mol]), float(list(data.spatial_dict.keys())[0]), float(list(data.spatial_dict.keys())[-1])])
+            fig.colorbar(shw,ax=axes[ax])
         axes[par].set_title(param[0])
         
 def plot_setup(plot_molecules,data,num_spines,plottype):
@@ -283,7 +284,9 @@ def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
         for i,(param,total_trace) in enumerate(dataset.file_set_tot.items()):
             mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
             for row,region in enumerate(regions):
-                for col,(mol,trace) in enumerate(total_trace[region].items()): 
+                for col,(mol,trace) in enumerate(total_trace[region].items()):
+                    if region=='Overall':
+                        print('$$$$$$$$$$$$$$',region,param,mol,'mean=',round(np.mean(traces,axis=1),1),',std=',round(np.std(traces,axis=1),1))
                     #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
                     ax=col+row*numcols
                     newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
