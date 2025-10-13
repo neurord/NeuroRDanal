@@ -28,6 +28,7 @@ additional parameters lines 41-63
 
 """
 #ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof -par HSJCF4train*crtl -savedir /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tmp_out -mol Ca Cof Cofactin RacPAK -start 0 300 -write_trials 1 -tot /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tot_species_minmax'
+#ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/resultsSSH40_sloKal/Model_Cof -par ctrl_ -mol pCof -start 200 300'
 import numpy as np
 import sys
 
@@ -38,15 +39,15 @@ from h5utilsV2 import parse_args,get_tot
 
 #probably should add most of these to args with defaults 
 submembname='sub'
-dendname="dend"
+dendname="dend" #name of region from morph file
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
 spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
-window_size=0.1  #number of msec on either side of peak value to average for maximum
+window_size=0.5  #number of msec on either side of peak value to average for maximum
 #These control what output is printed or written
 show_inject=0
-write_output=1#one file per molecules per input file
-output_features=1#one file per molecule per set of input files
+write_output=0#one file per molecules per input file
+output_features=0#one file per molecule per set of input files
 showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
@@ -58,7 +59,7 @@ pairs_timeframe=[100,600]#[200,2000] #units are sec
 interest_region=['dend','sa1[0]'] #plot mol pairs and write features in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
-save_fig=True
+save_fig=False
 zoom = [[0,300],[300,500],[300,1000]]
 
 ############## END OF PARAMETERS #################s
@@ -160,11 +161,11 @@ if showplot:
         pu5.plotregions(data.molecules,og,fig2,col_inc,scale,data.region_dict,textsize=textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
-        figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=['sa1[0]','dendsub'])   
+        figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=interest_region)   
     for feat in feature_list:
-        pu5.plot_features(og,feat,figtitle)
+        pu5.plot_features(og,feat,figtitle,interest_region)
     if spatial_bins and data.maxvols>1:
-        pu5.spatial_plot(data,og)
+        pu5.spatial_plot(data,og,plot_trials=params.write_trials)
     if len(mol_pairs):
         pu5.pairs(og,mol_pairs,pairs_timeframe,interest_region)
 
