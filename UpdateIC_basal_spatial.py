@@ -18,9 +18,9 @@ import os
 import sys
 import numpy as np
 import h5py as h5
-from NeuroRDanal import h5utilsV2
-from NeuroRDanal.nrd_output import nrdh5_output
-from NeuroRDanal.nrd_group import nrdh5_group
+import h5utilsV2
+from nrd_output import nrdh5_output
+from nrd_group import nrdh5_group
 
 
 def AllSpecies (root):
@@ -62,12 +62,12 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
 dendname="dend" #from morph file
 spinehead="head" #from morph file
 submembname=dendname+'sub'
-decimals=4 #how many decimals to use in the updated IC file values
+decimals=2 #how many decimals to use in the updated IC file values
 info=False
 tot_info=True
 #some molecules may need to be hand tuned.  Use empty dict to avoid hand tuning
-#hand_mole_dict={}
 hand_mol_dict={'RacGDP': {'head': '4870.199', 'PSD': '7204.9958', 'dendsub': '331.9685'}, 'SSH': {'head': '11377.1493', 'PSD': '15112.6935', 'dendsub': '137.8153'}}
+hand_mol_dict={}
 
 #load the data 
 params=h5utilsV2.parse_args(args,do_exit)#h5utilsV2.argparse(args)
@@ -78,31 +78,7 @@ else:
 
 tot_species,weight,sub_species,signature,thresh,min_max=h5utilsV2.get_tot(params)
 
-og=nrdh5_group(params.fileroot,params.par,tot_species) 
-for fnum,ftuple in enumerate(og.ftuples):
-    data=nrdh5_output(ftuple)
-    data.rows_and_columns(None,params.start,params.end)
-    data.molecule_population()
-    #print(data.data['model']['grid'][:])
-    if data.maxvols>1:
-        data.region_structures(dendname,submembname,spinehead)#,stimspine) #stimspine is optional
-        data.average_over_voxels()
-    data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
-
-
-mole_conc_ic={M:{} for M in data.molecules}
-for mol in data.molecules:
-    mole_conc_ic[mol]['general']=np.mean(data.OverallMean[mol][0,data.sstart[mol]:data.ssend[mol]])# 0 indicates first trial
-   
-if data.maxvols>1:
-    mylist=['region','struct']
-    for ii, regions_params in enumerate (mylist):
-        for mol in data.molecules:
-            for jj,key in enumerate(data.output_labels[regions_params][mol].split()):
-                region=key.split('_')[-1]
-                
-                mole_conc_ic[mol][region]=np.mean(data.means[regions_params][mol][0,data.sstart[mol]:data.ssend[mol],jj])# 0 indicates first trial
-
+print(u'◢◤◢◤◢◤◢◤ Reading in IC and Rxn files ◢◤◢◤◢◤◢◤')
     
 #read in initial conditions file
 IC_filename=params.IC 
@@ -123,6 +99,32 @@ Rxn_filename=params.Rxn
 ## determine which species diffuse
 diffuse_species,non_diffuse_mol=DiffuseSpecies(Rxn_filename)
 
+og=nrdh5_group(params.fileroot,params.par,tot_species) 
+
+print(u'◢◤◢◤◢◤◢◤ beginning tot_subspecies ◢◤◢◤◢◤◢◤')
+
+for fnum,ftuple in enumerate(og.ftuples):
+    data=nrdh5_output(ftuple)
+    data.rows_and_columns(None,params.start,params.end)
+    data.molecule_population()
+    #print(data.data['model']['grid'][:])
+    if data.maxvols>1:
+        data.region_structures(dendname,submembname,spinehead)#,stimspine) #stimspine is optional
+        data.average_over_voxels()
+    data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
+mole_conc_ic={M:{} for M in data.molecules}
+for mol in data.molecules:
+    mole_conc_ic[mol]['general']=np.mean(data.OverallMean[mol][0,data.sstart[mol]:data.ssend[mol]])# 0 indicates first trial
+   
+if data.maxvols>1:
+    mylist=['region','struct']
+    for ii, regions_params in enumerate (mylist):
+        for mol in data.molecules:
+            for jj,key in enumerate(data.output_labels[regions_params][mol].split()):
+                region=key.split('_')[-1]
+                
+                mole_conc_ic[mol][region]=np.mean(data.means[regions_params][mol][0,data.sstart[mol]:data.ssend[mol],jj])# 0 indicates first trial
+
 ########### Initialize some lists and dictionaries 
 IC_molecules=[]
 all_species=AllSpecies(root)
@@ -138,6 +140,7 @@ for r in data.region_struct_dict.keys():
             #also get hand mole initial concentration
 
 #hand_mol_dict={m:{} for m in hand_mol}
+print(u'◢◤◢◤◢◤◢◤ first pass ◢◤◢◤◢◤◢◤') 
 
 for rt in root:
     subtree=ET.ElementTree(rt)
@@ -156,7 +159,7 @@ for rt in root:
                     print(mol,'updated elems',region,e.attrib)
                 IC_molecules.append(mol)
                 region_conc[mol][region]=mole_conc_ic[mol][region]
-            else:
+            else: #non-diffusible molecule in general concentration set
                 if info:
                     print(mol,'NOT updating ', region,' for non-diffusible', e.attrib) #get rid of this, since all are updated on second pass?
     else:
@@ -188,7 +191,7 @@ region=dendname+'cyt' ###update general with this value for non-diffusible molec
 elems=subtree.findall('.//NanoMolarity')
 for e in elems:
     mol=e.attrib['specieID']
-    if mol not in IC_molecules:
+    if mol not in IC_molecules: #moleclues not updated on first pass
         e.attrib['value']=str(np.round(mole_conc_ic[mol]['general'],decimals))
         if info:
             print('Updated conc set for non-diffusible molecule (on 2nd pass)',region,mol,e.attrib)
