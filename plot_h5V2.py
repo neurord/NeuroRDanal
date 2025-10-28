@@ -40,18 +40,18 @@ def plot_features(dataset,feature,title,interest_region):
     for imol,mol in enumerate(feature_mol):
         pyplot.figure() #new figure panel for each molecules
         pyplot.suptitle(title)
-        #FIXME need to loop over region, or something that that if len(p)
-        if len(p): #reshape feature values for plotting if 2 params and all combos
+        #FIXME need to loop over region, or something like that if len(p), i.e., if -par has two entries
+        if len(p): #reshape feature values for plotting if 2 types of params and all combos
             labels=p['labels']; xval_index=p['xindex'];label_index=p['lindex']
             new_yvals=np.zeros((len(xvals),len(labels)))
             for fnum,(fname,param) in enumerate(dataset.ftuples):
                 row=xvals.index(param[xval_index])
                 col=labels.index(param[label_index])
-                new_yvals[row,col]=dataset.mean_feature[feature][imol,fnum]
+                new_yvals[row,col]=dataset.mean_feature[feature][imol,fnum,0] #0 means to plot 'Overall' alternative: plot region?
             for col,label in enumerate(labels):
                 pyplot.scatter(xvals,new_yvals[:,col],label=dataset.params[label_index]+' '+str(label))
             pyplot.xlabel(dataset.params[xval_index])
-        else: #just plot feature values vs param or param combo 
+        else: #just plot feature values vs param or param combo - only one type of parameter
             key=dataset.ftuples[0][1]
             for regnum,reg in enumerate(dataset.file_set_conc[key].keys()):
                 if reg in interest_region:
