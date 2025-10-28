@@ -350,35 +350,33 @@ class nrdh5_group(object):
             for regnum,region in enumerate(thresh[key].keys()):
                 self.signature(key,region,regnum,thresh)
 
-    def write_sig(self, region_list=None):  #one file per signature and parameter, all regions, average across trials. FIxME: write trials
+    def write_sig(self, regions, write_trials):  #one file per signature and parameter, all regions, average across trials. 
         for key in self.sig.keys():
             for par in self.sig[key].keys(): 
                 #self.sig[mol][par][region] #2D array - trial x time
                 par_str='_'.join([str(q) for q in par])
                 outfilename=self.savedir+par_str+'_'+key
-                regions=list(set(region_list) & set(self.sig[key][par].keys()))
                 columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] 
                 header='Time   '+'    '.join(columns)
-                output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1])
+                output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
                 for reg in regions:
                     output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
-                np.savetxt(outfilename+'_sig.txt', output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename           
-                if region_list: #and np.all([reg in self.sig[key][par].keys() for reg in region_list]):
-                    trial_cols=['_'.join([key,par_str,reg,tr]) for reg in region_list for tr in self.trials ]
+                np.savetxt(outfilename+'_sig.txt', output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename
+                if write_trials:
+                    trial_cols=['_'.join([key,par_str,reg,tr]) for reg in regions for tr in self.trials ]
                     trial_header='Time   '+'    '.join(trial_cols)
                     output_trials= self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
-                    for reg in region_list:
+                    for reg in regions:
                         output_trials=np.column_stack((output_trials,self.sig[key][par][reg].T)) #need to transpose self.sig??  
                 np.savetxt(outfilename+'_sig_trials.txt', output_trials, fmt='%.4f', delimiter=' ', header=trial_header) #write signature trials with different filename           
 
     #one file per parameter and molecule, only regions of interest.
-    def write_trace_trials(self, region_list,fileroot):
+    def write_trace_trials(self, regions,fileroot):
         import os 
         #### write trials for specified regions providing they are in file_set_conc
         for par in self.file_set_conc.keys():
-            regions=list(set(region_list) & set(self.file_set_conc[par].keys())) #changes order of items in region_list
-            reg0=regions[0]
             par_name='_'.join([str(q) for q in par])
+            reg0=regions[0] 
             for file_set in [self.file_set_conc, self.file_set_tot]:
                 for mol in file_set[par][reg0].keys(): 
                     outfilename=self.savedir+os.path.splitext(os.path.basename(fileroot))[0]+'_'+par_name+'_'+mol+'_trials.txt'

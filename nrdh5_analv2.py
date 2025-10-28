@@ -37,30 +37,25 @@ from nrd_output import nrdh5_output
 from nrd_group import nrdh5_group
 from h5utilsV2 import parse_args,get_tot
 
-#probably should add most of these to args with defaults 
+#####these five params are determined/constrained by morphology file
 submembname='sub'
 dendname="dend" #name of region from morph file
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
-spatial_bins=0  #number of spatial bins to subdivide dendrite to look at spatial gradients
+interest_region=['dend','sa1[0]'] #plot mol pairs and write features in which region
 window_size=0.5  #number of msec on either side of peak value to average for maximum
-#These control what output is printed or written
+###These control what output is written to terminal
 show_inject=0
-write_output=0#one file per molecules per input file
-output_features=0#one file per molecule per set of input files
-showplot=3 #0 for none, 1 for overall average, 2 for spine concentration, 3 for spine and nonspine on seperate graph, or for a region plot when there are no spines
 show_mol_totals=0
 print_head_stats=0
-textsize=8
-feature_list=[]#['auc','duration']#['duration','auc']
-#these molecules MUST be specified as plot_molecules
+feature_list=['auc']#['auc','duration']#  Constrained by set of features in nrd_group.  Only controls what is printed
+#####To plot one molecule against the other. these molecules MUST be specified as plot_molecules
 mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
-interest_region=['dend','sa1[0]'] #plot mol pairs and write features in which region?
 basestart_time=0#2200 #make this value 0 to calculate AUC using baseline calculated from initial time period
 aucend=None#600#end time for calculating auc, or None to calculate end time automatically
-save_fig=False
-zoom = [[0,300],[300,500],[300,1000]]
+save_fig=False #make true to save figures to disk
+zoom = [[0,300],[300,500],[300,1000]]  #only used if save_fig=True
 
 ############## END OF PARAMETERS #################s
 try:
@@ -100,15 +95,15 @@ for fnum,ftuple in enumerate(og.ftuples):
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:
         data.region_structures(dendname,submembname,spinehead,stimspine) #stimspine is optional
-        if spatial_bins>0:
-            data.spatial_structures(spatial_bins,dendname)
+        if params.spatial_bins>0:
+            data.spatial_structures(params.spatial_bins,dendname)
         data.average_over_voxels()
     # need to add another total array for different regions (to use for signature)
     #Default outputset is _main_, can specify outset= something
     data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
     og.conc_arrays(data)
     #Now, print or write some optional outputs
-    if write_output:
+    if params.write_output:
         data.write_average(og.savedir)
     if 'event_statistics' in data.data['trial0']['output'].keys() and show_inject:
         print ("seeds", data.seeds," injection stats:")
@@ -118,17 +113,24 @@ for fnum,ftuple in enumerate(og.ftuples):
             print (inject_sp.split()[-1].rjust(20),inject_num[imol])
     if print_head_stats:
         data.print_head_stats()
+if len(interest_region):
+    print('before write_trace_trials, all_regions=',og.all_regions)
+    regions=list(set(interest_region) & set(og.all_regions))
+    if not len(regions):
+        print('interest_region does not match regions in simulation, defaulting to Overall')
+        regions=['Overall']
+else:
+    regions=['Overall'] #do not allow regions=[] because some plots will be empty and some output functions will fail
 if params.write_trials and len(interest_region):
-    og.write_trace_trials(interest_region,params.fileroot)
-        
+    og.write_trace_trials(regions,params.fileroot) 
 #extract some features from the group of data files
 #Default numstim = 1, so that parameter not needed for single pulse
 #other parameter defaults:  lo_thresh_factor=0.2,hi_thresh_factor=0.8, std_factor=2
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
 og.trace_features(window_size,std_factor=2,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
-if len(feature_list) and output_features:
-    og.write_features(feature_list,params.fileroot,interest_region,params.write_trials)
+if len(feature_list) and params.write_feat:
+    og.write_features(feature_list,params.fileroot,regions,params.write_trials) #nothing written if interest_region=[]
 #################
 #print all the features in nice format - Overall values only
 regnum=0 #change this to print other regions
@@ -144,43 +146,44 @@ for fnum,ftuple in enumerate(og.ftuples):
         print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals),np.std(og.feature_dict['auc'][imol,fnum])/og.mean_feature['auc'][imol,fnum])
 
 ######################### Plots
-if showplot:
-    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),showplot)
-    if showplot==2 and len(stimspine):
+if params.showplot:
+    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),params.showplot)
+    if params.showplot==2 and len(stimspine):
         figtitle=figtitle+' '+' '.join(stimspine)
-    if showplot==3:
+    if params.showplot==3:
         for spnum,sp in enumerate(data.spinelist):
             fig[spnum].suptitle(figtitle+' '+sp)
     else:
         fig.canvas.manager.set_window_title(figtitle)
-    pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=textsize)
-    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+    pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,params.showplot,textsize=params.textsize)
+    if params.showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         fig2,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
         for regnum,reg in enumerate(data.region_dict):
             fig2[regnum].suptitle(figtitle+' '+reg)
-        pu5.plotregions(data.molecules,og,fig2,col_inc,scale,data.region_dict,textsize=textsize)
+        pu5.plotregions(data.molecules,og,fig2,col_inc,scale,data.region_dict,textsize=params.textsize)
     #also plot the totaled molecule forms
     if len(tot_species):
-        figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=textsize,regions=interest_region)   
+        figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=params.textsize,regions=regions)   
     for feat in feature_list:
-        pu5.plot_features(og,feat,figtitle,interest_region)
-    if spatial_bins and data.maxvols>1:
+        pu5.plot_features(og,feat,figtitle,regions)
+    if params.spatial_bins and data.maxvols>1:
         pu5.spatial_plot(data,og,plot_trials=params.write_trials)
     if len(mol_pairs):
-        pu5.pairs(og,mol_pairs,pairs_timeframe,interest_region)
-
+        pu5.pairs(og,mol_pairs,pairs_timeframe,regions)
+print('################## Calculating signature ##################3')
 if len(signature):
      og.norm_sig(signature,thresh,min_max)
-     figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=textsize)    #plot some feature values
+     if params.showplot:
+         figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=params.textsize)    #plot some feature values
      for feature in og.sig_features.keys():
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
              print (key,':', og.sig_features[feature][key])
-     if write_output:
-        if params.write_trials and len(interest_region):
-            og.write_sig(interest_region)
+     if params.write_output:
+        if len(interest_region):
+            og.write_sig(regions,params.write_trials)
         else:
-            og.write_sig()
+            og.write_sig(og.all_regions,params.write_trials)
 def ZOOM_fig (figs,zoom,name):
     if not isinstance(figs, list):
         figs = [figs]  # Convert single Figure object to a list
@@ -195,7 +198,7 @@ if save_fig==True:
         f.savefig(og.savedir+figtitle+'_'+sp+'.png')
     name = ''
     ZOOM_fig(fig,zoom,name)         
-    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+    if params.showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         for f,reg in zip(fig2,data.region_dict):
             f.savefig(og.savedir+figtitle+'_'+reg+'.png')
         name = 'sp' 
