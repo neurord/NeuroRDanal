@@ -77,6 +77,7 @@ class nrdh5_group(object):
     def trace_features(self,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=2,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
         import operator
         self.feature_list=['baseline','basestd','peakval','peaktime','amplitude','duration','slope','minval','auc','auc_thresh','start_plateau', 'end_plateau']
+        self.feature_scale={'baseline':1,'basestd':1,'peakval':1,'peaktime':ms_to_sec,'amplitude':1,'duration':ms_to_sec,'slope':1,'minval':1,'auc':ms_to_sec,'auc_thresh':1,'start_plateau':ms_to_sec, 'end_plateau':ms_to_sec}
         self.feature_dict={feat:np.zeros((len(self.molecules)+len(self.tot_species),len(self.ftuples), len(self.all_regions),len(self.trials))) for feat in self.feature_list}
         self.mean_feature={}
         self.std_feature={}
@@ -110,7 +111,7 @@ class nrdh5_group(object):
                 self.feature_dict['baseline'][imol,parnum,regnum,:]= np.mean(traces[region][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
                 self.feature_dict['basestd'][imol,parnum,regnum,:]=np.std(traces[region][mol][:,self.sstart[mol]:self.ssend[mol]],axis=1)
                 peakpt=np.argmax(traces[region][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
-                self.feature_dict['peaktime'][imol,parnum,regnum,:]=peakpt*self.dt[mol]
+                self.feature_dict['peaktime'][imol,parnum,regnum,:]=peakpt*self.dt[mol]/self.feature_scale['peaktime']
                 self.feature_dict['peakval'][imol,parnum,regnum,:]=[np.mean(traces[region][mol][i,p-window:p+window]) 
                                                              for i,p in enumerate(peakpt)]
                 lowpt=np.argmin(traces[region][mol][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
@@ -156,10 +157,10 @@ class nrdh5_group(object):
         midpoints=0.5*(self.feature_dict['amplitude'][imol,parnum,regnum,:])+self.feature_dict['baseline'][imol,parnum,regnum,:]
         start_platpt=exceeds_thresh_points(traces, self.ssend_list, midpoints,operator.gt) #earliest point that trace exceeds threshold
         end_platpt=exceeds_thresh_points(traces,peakpt,midpoints,operator.lt,filt_length=filt_length) #earliest point that trace exceeds threshold AFTER the peak.  shold this be .lt
-        self.feature_dict['start_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in start_platpt]
-        print_end = self.feature_dict['end_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol] for platpt in end_platpt]
+        self.feature_dict['start_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol]/self.feature_scale['start_plateau'] for platpt in start_platpt]
+        print_end = self.feature_dict['end_plateau'][imol,parnum,regnum,:]=[platpt*self.dt[mol]/self.feature_scale['start_plateau'] for platpt in end_platpt]
         #print('DURATION: mol',mol,'param',parnum,'start pt',start_platpt,'end',[round(p,2) for p in print_end])
-        self.feature_dict['duration'][imol,parnum,regnum,:]=[(end-start)*self.dt[mol]
+        self.feature_dict['duration'][imol,parnum,regnum,:]=[(end-start)*self.dt[mol]/self.feature_scale['start_plateau']
                                                     for end,start in zip(end_platpt,start_platpt)]
         ####################
     def auc(self, traces, imol, parnum, par, mol, numstim, std_factor, aucend, iti, end_baseline_start, filt_length, regnum):                            
@@ -196,7 +197,7 @@ class nrdh5_group(object):
                                             operator.lt,filt_length=filt_length) #earliest time that trace drops below threshold
         #print('AUC: mol=',mol,'param=',par,'start pt=',begin_auc,'peakpt_stim=',peakpt_stim,'end=',end_auc)
         if aucend is not None:
-            self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol] for i,b in enumerate(baseline)]
+            self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:int(aucend/self.dt[mol])]-b)*self.dt[mol]/self.feature_scale['auc'] for i,b in enumerate(baseline)]
             print('end_auc',end_auc,'specified end auc',aucend)
         elif np.any(np.isnan(end_auc)):
             self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,self.ssend[mol]:]-b)*self.dt[mol] for i,b in enumerate(baseline)]
@@ -208,7 +209,7 @@ class nrdh5_group(object):
             #self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,begin:end]-
             #                                                       baseline[i])*self.dt[mol] for i,(begin,end) in enumerate(zip([begin_auc,end_auc]))]
  
-    def write_features(self,feature_list,arg0,regions,write_trials=False): #
+    def write_features(self,feature_list,arg0,regions,write_trials=False): #arg0=fileroot
         for regnum,reg in enumerate(self.all_regions): #average, one file per region, all molecules in each file
             if reg in regions: #only output a subset of regions
                 outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'_'+reg+'.txt'  #test whether this works for single file
@@ -224,15 +225,14 @@ class nrdh5_group(object):
                     header+=' '.join([m+'_'+feat+'_mean ' for m in list(self.molecules)+self.tot_species ]+ \
                                     [m+'_'+feat+'_std ' for m in list(self.molecules)+self.tot_species] )
                 np.savetxt(outfname,outputdata,fmt='%1s', delimiter='     ', header=header)
-
         #write individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
         if write_trials:
             #print('writing trials')
-            params=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
+            par_string=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
             for imol,mol in enumerate(list(self.molecules)+self.tot_species):
                 outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
                 header='param  trial '
-                outputdata=params
+                outputdata=par_string
                 for feat in feature_list:
                     for regnum,reg in enumerate(self.all_regions):
                         if reg in regions:
@@ -273,7 +273,9 @@ class nrdh5_group(object):
                     maxVal=np.max(np.mean(self.feature_dict['peakval'][imol,:,regnum,:],axis=-1)) #replace first : with parnum to normalize separately for each protocol
                     minVal=np.min(np.mean(self.feature_dict['minval'][imol,:regnum,:],axis=-1)) #same as above
                 if parnum==0:
-                    print('norm constants for', num_denom, 'mol=', mol,'region=',region, 'max=', maxVal,'min=', minVal)
+                    temp_dict={mol:{region:{'max':round(maxVal,3),'min':round(minVal,3)}}}
+                    print('norm constants for', num_denom, temp_dict) #print in format needed for tot_species, minmax
+                    #print('norm constants for', num_denom, 'mol=', mol,'region=',region, 'max=', maxVal,'min=', minVal)
                 for t in range(len(self.trials)):
                     # constrain norm between -1 and 1: 
                     if self.dt[mol]==self.dt[num_denom]:
@@ -308,7 +310,7 @@ class nrdh5_group(object):
             #
             self.sig_features['basestd'][mol][par][region]=np.std(self.sig[mol][par][region][:,self.sstart[mol]:self.ssend[mol]],axis=1)
             peakpt=np.argmax(self.sig[mol][par][region][:,self.ssend[mol]:],axis=1)+self.ssend[mol]
-            self.sig_features['peaktime'][mol][par][region]=peakpt*self.dt[mol]
+            self.sig_features['peaktime'][mol][par][region]=peakpt*self.dt[mol]/self.sig_feat_scale['peaktime']
             #this should be 1.0 unless there is a bug
             self.sig_features['amplitude'][mol][par][region]=[np.mean(self.sig[mol][par][region][i,p-window:p+window]) for i,p in enumerate(peakpt)] 
             #thresh_val=[thresh[region]*amp for amp in self.sig_features['amplitude'][mol][par][region]]
@@ -319,18 +321,19 @@ class nrdh5_group(object):
             for i,ep in enumerate(end_platpt):
                 if np.isnan(ep):
                     end_platpt[i]=len(self.sig[mol][par][region][i])
-            self.sig_features['duration'][mol][par][region]=[(end-start)*self.dt[mol]
+            self.sig_features['duration'][mol][par][region]=[(end-start)*self.dt[mol]/self.sig_feat_scale['duration']
                                                     for end,start in zip(end_platpt,start_platpt)]
-            self.sig_features['auc'][mol][par][region]=[np.sum(self.sig[mol][par][region][i,self.ssend[mol]:end]-thresh_val[i])*self.dt[mol] 
+            self.sig_features['auc'][mol][par][region]=[np.sum(self.sig[mol][par][region][i,self.ssend[mol]:end]-thresh_val[i])*self.dt[mol]/self.sig_feat_scale['auc']
                                                     for i,end in enumerate(end_platpt)] #sum area above the threshold
-            self.sig_features['start_plateau'][mol][par][region]= [p*self.dt[mol] for p in start_platpt]  
-            self.sig_features['end_plateau'][mol][par][region]= [p*self.dt[mol] for p in end_platpt]  
+            self.sig_features['start_plateau'][mol][par][region]= [p*self.dt[mol]/self.sig_feat_scale['start_plateau'] for p in start_platpt]  
+            self.sig_features['end_plateau'][mol][par][region]= [p*self.dt[mol]/self.sig_feat_scale['end_plateau'] for p in end_platpt]  
             start_dip_pt=exceeds_thresh_points(self.sig[mol][par][region], end_platpt, [0]* len(end_platpt), operator.lt) #earliest point that trace reaches below baseline
-            self.sig_features['start_dip'][mol][par][region]= [p*self.dt[mol] for p in start_dip_pt]  
+            self.sig_features['start_dip'][mol][par][region]= [p*self.dt[mol]/self.sig_feat_scale['start_dip'] for p in start_dip_pt]  
 
     def norm_sig(self,signature,thresh,min_max):
         self.sig={key:{p[1]:{} for p in self.ftuples} for key in signature.keys()}
         self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime', 'start_dip']
+        self.sig_feat_scale={'basestd':1,'amplitude':1,'duration':ms_to_sec,'auc':ms_to_sec,'start_plateau':ms_to_sec,'end_plateau':ms_to_sec,'peaktime':ms_to_sec, 'start_dip':ms_to_sec}
         self.sig_features={feat:{key:{p[1]:{} for p in self.ftuples} for key in signature.keys()} for feat in self.sig_feature_list}
         for key,sig in signature.items():
             num_molecules=sig['num']
@@ -350,25 +353,49 @@ class nrdh5_group(object):
             for regnum,region in enumerate(thresh[key].keys()):
                 self.signature(key,region,regnum,thresh)
 
-    def write_sig(self, regions, write_trials):  #one file per signature and parameter, all regions, average across trials. 
+    def write_sig(self, regions, params,feature_list):  #one file per signature and parameter, all regions, average across trials. 
         for key in self.sig.keys():
             for par in self.sig[key].keys(): 
                 #self.sig[mol][par][region] #2D array - trial x time
                 par_str='_'.join([str(q) for q in par])
-                outfilename=self.savedir+par_str+'_'+key
+                outfilename=self.savedir+os.path.basename(params.fileroot)+par_str+'_'+key
                 columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] 
                 header='Time   '+'    '.join(columns)
                 output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
                 for reg in regions:
                     output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
                 np.savetxt(outfilename+'_sig.txt', output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename
-                if write_trials:
+                if params.write_trials:
                     trial_cols=['_'.join([key,par_str,reg,tr]) for reg in regions for tr in self.trials ]
                     trial_header='Time   '+'    '.join(trial_cols)
                     output_trials= self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
                     for reg in regions:
                         output_trials=np.column_stack((output_trials,self.sig[key][par][reg].T)) #need to transpose self.sig??  
                 np.savetxt(outfilename+'_sig_trials.txt', output_trials, fmt='%.4f', delimiter=' ', header=trial_header) #write signature trials with different filename           
+        print('in write_sig - features',feature_list,regions)
+        #write sig features for individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
+        if params.write_trials:
+            #write signature features for individual trials
+            out_par=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
+            for mol in self.sig_features[feature_list[0]].keys(): 
+                outfname=self.savedir+os.path.basename(params.fileroot)+'-'+'anal'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
+                header='param  trial '
+                trials=len(self.trials)
+                nfeat=len(feature_list)
+                for ifeat,feat in enumerate(feature_list): #each feature separate column
+                    for ipar,par in enumerate(self.sig_features[feat][mol].keys()): #different files are different rows
+                        #row stack the pars
+                        nrows=len(self.sig_features[feat][mol])*len(self.trials) #number of files * number of trials
+                        ncols=len(self.sig_features[feat][mol][par])*nfeat #number of regions
+                        output_array=np.empty((nrows,ncols))
+                        for ireg,reg in enumerate(self.sig_features[feat][mol][par].keys()): #each region a different column
+                            #column stack the regions
+                            output_array[ipar*trials:(ipar+1)*trials,ireg*nfeat:ireg*nfeat+1]=np.round(np.array(self.sig_features[feat][mol][par][reg]),2).reshape(trials,1)
+                            if ipar==0:
+                                 header=header+'   '+'_'.join([mol,reg,feat])
+                outputdata=np.column_stack((out_par,output_array))
+                np.savetxt(outfname,outputdata,fmt='%1s', delimiter='     ', header=header)
+
 
     #one file per parameter and molecule, only regions of interest.
     def write_trace_trials(self, regions,fileroot):
