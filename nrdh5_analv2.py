@@ -135,15 +135,16 @@ if len(feature_list) and params.write_feat:
 #print all the features in nice format - Overall values only
 regnum=0 #change this to print other regions
 features=[k[0:7] for k in og.feature_dict.keys()]
-print("file-params       molecule " +' '.join(features)+' ratio   CV')
+print("file-params            molecule " +'  '.join(features)+' ratio   CV')
 for fnum,ftuple in enumerate(og.ftuples):
     for imol,mol in enumerate(list(og.molecules)+og.tot_species):
         outputvals=[str(np.round(odict[imol,fnum,regnum],4)) for feat,odict in og.mean_feature.items()]
-        if og.mean_feature['baseline'][imol,fnum,regnum]>1e-5:
+        if np.abs(og.mean_feature['baseline'][imol,fnum,regnum])>1e-5:
             outputvals.append(str(np.round(og.mean_feature['amplitude'][imol,fnum,regnum]/og.mean_feature['baseline'][imol,fnum,regnum],2)).rjust(8))
         else:
             outputvals.append('inf')
-        print(ftuple[1],mol.rjust(16),'  ','  '.join(outputvals),np.std(og.feature_dict['auc'][imol,fnum])/og.mean_feature['auc'][imol,fnum])
+        if np.abs(og.mean_feature['auc'][imol,fnum,regnum])>1e-5:
+            print(ftuple[1],mol.rjust(16) ,'  ','  '.join(outputvals),round(np.std(og.feature_dict['auc'][imol,fnum,regnum])/og.mean_feature['auc'][imol,fnum,regnum],3))
 
 ######################### Plots
 if params.showplot:
@@ -172,18 +173,21 @@ if params.showplot:
         pu5.pairs(og,mol_pairs,pairs_timeframe,regions)
 print('################## Calculating signature ##################3')
 if len(signature):
-     og.norm_sig(signature,thresh,min_max)
-     if params.showplot:
+    og.norm_sig(signature,thresh,min_max)
+    if params.showplot:
          figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=params.textsize)    #plot some feature values
-     for feature in og.sig_features.keys():
+    for feature in og.sig_features.keys():
          print('FEATURE:',feature)
          for key in og.sig_features[feature].keys():
-             print (key,':', og.sig_features[feature][key])
-     if params.write_output:
+             print (key,':') #key is the file parameter
+             for reg in og.sig_features[feature][key].keys():
+                 print(reg,':',og.sig_features[feature][key][reg])
+    if params.write_output:
         if len(interest_region):
-            og.write_sig(regions,params.write_trials)
+            og.write_sig(regions,params,['auc','duration','amplitude'])
         else:
-            og.write_sig(og.all_regions,params.write_trials)
+            og.write_sig(og.all_regions,params,['auc','duration','amplitude'])
+
 def ZOOM_fig (figs,zoom,name):
     if not isinstance(figs, list):
         figs = [figs]  # Convert single Figure object to a list
