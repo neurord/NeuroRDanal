@@ -27,7 +27,12 @@ def parse_args(commandline,do_exit):
     parser.add_argument('-end',type=int,help='end time to process & display, e.g., if simulation is still running')
     parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
     parser.add_argument('-iti',help='intertrial interval, only provided if iti is NOT a parameter used in the filename',default=0)
-    parser.add_argument('-write_trials',type=bool,help='whether to create a file with feature values for each trial',default=False)
+    parser.add_argument('-write_trials',type=bool,help='whether to create files with feature values/traces for each trial',default=False)
+    parser.add_argument('-write_output',type=bool,help='whether to create output files for traces, signatures',default=False)
+    parser.add_argument('-write_feat',type=bool,help='whether to create output files for features',default=False)
+    parser.add_argument('-showplot',type=int,help='0: none, 1: overall average, 2: spine concentration, 3: spine and nonspine on seperate graphs, or region plot when no spines',default=1)
+    parser.add_argument('-spatial_bins',type=int,help='number of spatial bins to subdivide dendrite to look at spatial gradients',default=0)
+    parser.add_argument('-textsize',type=int,help='fontsize of axes and legends in graphs',default=8)
     parser.add_argument('-IC',help='IC is the name of the IC file to be updated')
     parser.add_argument('-Rxn',help='Rxn file is the reaction file used for the simulation')
     try:
@@ -47,7 +52,7 @@ def join_params(parval,params):
         label=parval
     return label
 
-def sstart_end(molecule_list, out_location,dt,rows,args=None):
+def sstart_end(molecule_list, out_location,dt,rows,args=None,prn=True):
     num_mols=len(molecule_list)
     sstart={}#np.zeros((num_mols),dtype=np.int)
     ssend={}#np.zeros((num_mols),dtype=np.int)
@@ -56,7 +61,7 @@ def sstart_end(molecule_list, out_location,dt,rows,args=None):
             if out_location[mol]!=-1:
                 sstart[mol] = int(np.round(float(args[0]) / dt[mol]))
                 ssend[mol] = int(np.round(float(args[1]) / dt[mol]))
-                if ssend[mol]>0.5*rows[imol]:
+                if ssend[mol]>0.5*rows[imol] and prn:
                     print("WARNING*******. Possible SS time issue for",mol,": only", rows[imol], "rows")
                 if ssend[mol]>rows[imol]:
                     ssend[mol]=0.1*rows[imol]
