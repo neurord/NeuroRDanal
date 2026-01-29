@@ -139,7 +139,7 @@ class nrdh5_output(object):
                                output_std=np.column_stack((output_std,np.std(self.total_trace[reg][mol],axis=0)))
                                mean_header=mean_header+' '+mol+col_name+'_'+reg
                 std_header='_std '.join(mean_header.split())
-                output_header='Time '+ mean_header+' '+std_header+'_std\n'
+                output_header='Time '+ mean_header+' '+std_header+'_std'
                 #print(outfilename,output_header)
                 np.savetxt(outfilename, np.column_stack((time,output_means,output_std)), fmt='%.4f', delimiter=' ', header=output_header)            
         
