@@ -244,7 +244,7 @@ class nrdh5_group(object):
         all_dts=[self.dt[mol] for mol in sig_molecules] 
         if len(np.unique(all_dts))>1:
             #select largest dt
-            dt_index=np.argmax(list(self.dt.values()))
+            dt_index=np.argmax(all_dts)
         else:
             dt_index=0
         self.dt[num_denom]=all_dts[dt_index]
