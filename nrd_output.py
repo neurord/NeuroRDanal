@@ -116,9 +116,9 @@ class nrdh5_output(object):
         import os ########### NEED TO PUT SPATIAL STUFF IN SEPARATE FILE?
         for mol_set in [self.molecules,self.tot_species.keys()]:
             for mol in mol_set:
-                outfilename=savedir+os.path.splitext(os.path.basename(self.fname))[0]+mol+'_avg.txt'
+                outfilename=savedir+os.path.splitext(os.path.basename(self.fname))[0]+'-'+mol+'-avg.txt'
                 col_name='_'.join([str(q) for q in self.parval])
-                mean_header=mol+col_name+'_All ' #first non-time column of header
+                mean_header=mol+'_'+col_name+'_All ' #first non-time column of header
                 if mol in self.molecules: 
                     output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
                     output_std=np.std(self.OverallMean[mol],axis=0)
@@ -137,7 +137,7 @@ class nrdh5_output(object):
                         for reg in list(self.total_trace.keys())[1:]:
                                output_means=np.column_stack((output_means,np.mean(self.total_trace[reg][mol],axis=0)))
                                output_std=np.column_stack((output_std,np.std(self.total_trace[reg][mol],axis=0)))
-                               mean_header=mean_header+' '+mol+col_name+'_'+reg
+                               mean_header=mean_header+' '+'_'.join([mol,col_name,reg])
                 std_header='_std '.join(mean_header.split())
                 output_header='Time '+ mean_header+' '+std_header+'_std'
                 #print(outfilename,output_header)
