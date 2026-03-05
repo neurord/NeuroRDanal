@@ -270,31 +270,30 @@ def plotss(plot_mol,xparval,ss):
 
 def plot_total_mol(tot_species,dataset,figtitle,colinc,textsize,regions=None):
     numcols=len(tot_species)
-    #Will need to specify whether plotting spine (and non-spine) totals, currently, regions are overall, dsm and spine head.  need non-spine (dendrite)
     if not regions:
         regions=dataset.all_regions
     numrows= len(regions) 
     fig,axes=pyplot.subplots(numrows,numcols,sharex=True)
     fig.canvas.manager.set_window_title(figtitle+'Totals')
     axis=fig.axes
-    if len(dataset.file_set_tot.keys())==1:
-        mycolor=[0,0,0]
-        plotlabel=''
-    else:
-        for i,(param,total_trace) in enumerate(dataset.file_set_tot.items()):
+    for i,(param,total_trace) in enumerate(dataset.file_set_tot.items()):
+        if len(dataset.file_set_tot.keys())==1:
+            mycolor=[0,0,0]
+            plotlabel=''
+        else:
             mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
-            for row,region in enumerate(regions):
-                for col,(mol,trace) in enumerate(total_trace[region].items()):
-                    if region=='Overall':
-                        print('$$$$$$$$$$$$$$',region,param,mol,'mean=',round(np.mean(traces,axis=1),1),',std=',round(np.std(traces,axis=1),1))
-                    #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
-                    ax=col+row*numcols
-                    newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
-                    axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
-                    axis[col].set_title(mol+' TOTAL',fontsize=textsize)
-                    axis[-1].set_xlabel('Time (sec)',fontsize=textsize)
-                    axis[ax].tick_params(labelsize=textsize)
-                    axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
+        for row,region in enumerate(regions):
+            for col,(mol,trace) in enumerate(total_trace[region].items()):
+                if region=='Overall':
+                    print('$$$$$$$$$$$$$$',region,param,mol,'mean=',round(np.mean(traces,axis=1),1),',std=',round(np.std(traces,axis=1),1))
+                #print('$$$$$$$$$$ pu.ps',param,mol,np.shape(trace),mycolor,plotlabel)
+                ax=col+row*numcols
+                newtime = np.linspace(0,dataset.endtime[param][mol], np.shape(trace)[1]) #convert from ms to sec
+                axis[ax].plot(newtime,np.mean(trace,axis=0),label=plotlabel,color=mycolor)
+                axis[col].set_title(mol+' TOTAL',fontsize=textsize)
+                axis[-1].set_xlabel('Time (sec)',fontsize=textsize)
+                axis[ax].tick_params(labelsize=textsize)
+                axis[row*numcols].set_ylabel(region+' Conc (nM)',fontsize=textsize)
         axis[0].legend(fontsize=legtextsize, loc='best')#for now put legend into panel 0
     fig.canvas.draw()
     return fig
