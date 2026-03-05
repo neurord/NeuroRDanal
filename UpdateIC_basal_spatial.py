@@ -82,7 +82,8 @@ print(u'◢◤◢◤◢◤◢◤ Reading in IC and Rxn files ◢◤◢◤◢◤�
     
 #read in initial conditions file
 IC_filename=params.IC 
-print(IC_filename)
+outfile=IC_filename+'_h5update.xml'
+print('orig filename=',IC_filename, ', updated IC filename=',outfile)
 tree=ET.parse(IC_filename+'.xml')
 root=tree.getroot()
 tags=list(np.unique([rt.tag for rt in root]))
@@ -266,7 +267,6 @@ for imol,mol in enumerate(tot_species):
           'total in h5 (beg,end)=',round(data.total_trace['Overall'][mol][0][0],decimals),round(data.total_trace['Overall'][mol][0][-1],decimals))
        
 ############# write the new IC file ###################
-outfile=IC_filename+'h5_updateNEW.xml'
 with open(outfile, 'wb') as out:
     out.write(ET.tostring(root))            
 
