@@ -91,7 +91,7 @@ class nrdh5_output(object):
               self.time[molecule]=time
               self.OverallMean[molecule]=np.sum(counts[:,:,:],axis=2)/(self.TotVol*mol_per_nM_u3)
         
-    def average_over_voxels(self):
+    def average_over_voxels(self,params):
         #calculate various averages.  These will be used for plotting and output
         self.output_labels={'struct':{},'region':{}}
         self.means={'struct':{},'region':{}}
@@ -103,22 +103,22 @@ class nrdh5_output(object):
             #calculate region-structure means, such as dendrite submembrane and dendrite cytosol
             #dimensions: number of trials x time samples x number of regions
             #labels hold the name of the region / structure, such as dendrite submembrane and dendrite cytosol
-            self.output_labels['struct'][mol],self.means['struct'][mol]=h5utils.region_means_dict(self,mol,self.region_struct_dict)            
+            self.output_labels['struct'][mol],self.means['struct'][mol]=h5utils.region_means_dict(self,mol,self.region_struct_dict,params)
             #regions, such as dendrite, soma, spine head
-            self.output_labels['region'][mol],self.means['region'][mol]=h5utils.region_means_dict(self,mol,self.region_dict)
+            self.output_labels['region'][mol],self.means['region'][mol]=h5utils.region_means_dict(self,mol,self.region_dict,params)
             #if more than one spine, calculate individual spine means
             if self.spinelist:
-                self.output_labels['spines'][mol],self.means['spines'][mol]=h5utils.region_means_dict(self,mol,self.spinevox)
+                self.output_labels['spines'][mol],self.means['spines'][mol]=h5utils.region_means_dict(self,mol,self.spinevox,params)
             if self.spatial_dict:
-                self.output_labels['space'][mol],self.means['space'][mol]=h5utils.region_means_dict(self,mol,self.spatial_dict)
+                self.output_labels['space'][mol],self.means['space'][mol]=h5utils.region_means_dict(self,mol,self.spatial_dict,params)
 
-    def write_average(self,savedir): #one file per molecule, mean and std of all regions
+    def write_average(self,savedir,params): #one file per molecule, mean and std of all regions
         import os ########### NEED TO PUT SPATIAL STUFF IN SEPARATE FILE?
         for mol_set in [self.molecules,self.tot_species.keys()]:
             for mol in mol_set:
                 outfilename=savedir+os.path.splitext(os.path.basename(self.fname))[0]+'-'+mol+'-avg.txt'
-                col_name='_'.join([str(q) for q in self.parval])
-                mean_header=mol+'_'+col_name+'_All ' #first non-time column of header
+                col_name='_'.join([str(r)+str(q) for r,q in zip(params,self.parval)])
+                mean_header=col_name+'_'+mol+'_All ' #first non-time column of header
                 if mol in self.molecules: 
                     output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
                     output_std=np.std(self.OverallMean[mol],axis=0)

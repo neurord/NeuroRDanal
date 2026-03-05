@@ -286,11 +286,11 @@ def multi_spines(model):
         spine_dict[spine]={'vox':spine_voxel.allvalues(spine), 'vol': sum(spine_voxel_vol.allvalues(spine))}
     return newspinelist,spine_dict
 
-def region_means_dict(Data,molecule,regionDict):
+def region_means_dict(Data,molecule,regionDict,params):
     samples=len(Data.time[molecule])
     RegionMeans=np.zeros((len(Data.trials),samples,len(regionDict)))
     header=''       #Header for output file
-    pars=[str(q) for q in Data.parval] #list of strings representing parameters
+    pars=[str(r)+str(q) for r,q in zip(params,Data.parval)] #list of strings representing parameters
     for j,item in enumerate(regionDict.keys()):
         #print(item,regionDict[item]['vox'],regionDict[item]['vol'],np.shape(Data.counts[molecule]))
         RegionMeans[:,:,j]=np.sum(Data.counts[molecule][:,:,regionDict[item]['vox']],axis=2)/(regionDict[item]['vol']*mol_per_nM_u3)

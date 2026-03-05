@@ -48,7 +48,7 @@ window_size=0.5  #number of msec on either side of peak value to average for max
 show_inject=0
 show_mol_totals=0
 print_head_stats=0
-feature_list=['auc']#['auc','duration']#  Constrained by set of features in nrd_group.  Only controls what is printed
+feature_list=['auc']#[,'duration']#  Constrained by set of features in nrd_group.  Only controls what is printed
 #####To plot one molecule against the other. these molecules MUST be specified as plot_molecules
 mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
@@ -79,7 +79,7 @@ else:
     
 figtitle=params.fileroot.split('/')[-1]
 if params.par:
-    figtitle+=' '.join(params.par)
+    figtitle+=' '+' '.join(params.par)
 
 
 tot_species,weight,sub_species,signature,thresh,min_max=get_tot(params)
@@ -97,14 +97,14 @@ for fnum,ftuple in enumerate(og.ftuples):
         data.region_structures(dendname,submembname,spinehead,stimspine) #stimspine is optional
         if params.spatial_bins>0:
             data.spatial_structures(params.spatial_bins,dendname)
-        data.average_over_voxels()
+        data.average_over_voxels(og.params)
     # need to add another total array for different regions (to use for signature)
     #Default outputset is _main_, can specify outset= something
     data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
     og.conc_arrays(data)
     #Now, print or write some optional outputs
     if params.write_output:
-        data.write_average(og.savedir)
+        data.write_average(og.savedir,og.params)
     if 'event_statistics' in data.data['trial0']['output'].keys() and show_inject:
         print ("seeds", data.seeds," injection stats:")
         print('molecule             '+'    '.join(data.trials))

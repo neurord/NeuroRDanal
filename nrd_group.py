@@ -39,41 +39,42 @@ class nrdh5_group(object):
         self.ssend={mol:data.ssend[mol] for mol in data.molecules}
         self.dt={mol:data.dt[mol] for mol in data.molecules}
         self.all_regions=['Overall']
+        parval=tuple([str(r)+str(p) for r,p in zip(self.params,data.parval)])
         if data.maxvols>1:
             for reg_dict in [data.region_dict,data.region_struct_dict]:
                 for regnum,reg in enumerate(reg_dict.keys()):
-                    if reg not in self.file_set_conc[data.parval].keys():
-                        self.file_set_conc[data.parval][reg]={}
+                    if reg not in self.file_set_conc[parval].keys():
+                        self.file_set_conc[parval][reg]={}
                         self.all_regions.append(reg)
             if data.spinelist:
                 for regnum,reg in enumerate(data.spinelist):
-                    if reg not in self.file_set_conc[data.parval].keys():
-                        self.file_set_conc[data.parval][reg]={}
+                    if reg not in self.file_set_conc[parval].keys():
+                        self.file_set_conc[parval][reg]={}
                         self.all_regions.append(reg)
         for imol,molecule in enumerate(data.molecules):
-            self.time_set[data.parval][molecule]=data.time[molecule]
-            self.file_set_conc[data.parval]['Overall'][molecule]=data.OverallMean[molecule]
+            self.time_set[parval][molecule]=data.time[molecule]
+            self.file_set_conc[parval]['Overall'][molecule]=data.OverallMean[molecule]
             if data.maxvols>1:
                 for reg_type,reg_dict in zip(['region','struct'],[data.region_dict,data.region_struct_dict]):
                     for regnum,reg in enumerate(reg_dict.keys()):
-                        self.file_set_conc[data.parval][reg][molecule]=data.means[reg_type][molecule][:,:,regnum]
+                        self.file_set_conc[parval][reg][molecule]=data.means[reg_type][molecule][:,:,regnum]
                 if data.spinelist:
                      for regnum,reg in enumerate(data.spinelist):
-                        self.file_set_conc[data.parval][reg][molecule]=data.means['spines'][molecule][:,:,regnum]
+                        self.file_set_conc[parval][reg][molecule]=data.means['spines'][molecule][:,:,regnum]
                 if data.spatial_dict:
-                    self.means[data.parval]['space'][molecule]=data.means['space'][molecule]
+                    self.means[parval]['space'][molecule]=data.means['space'][molecule]
             else:
                 self.spatial_data=None
         if len(self.tot_species):
             for reg in data.total_trace.keys(): #is order of regions in total_trace same as file_set_conc , file_set_tot, and all_regions?
-                if reg not in self.file_set_tot[data.parval].keys():
-                    self.file_set_tot[data.parval][reg]={sp:[] for sp in self.tot_species} 
-                for imol,sp in enumerate(self.file_set_tot[data.parval][reg].keys()):
-                    self.file_set_tot[data.parval][reg][sp]=data.total_trace[reg][sp][:,:]
+                if reg not in self.file_set_tot[parval].keys():
+                    self.file_set_tot[parval][reg]={sp:[] for sp in self.tot_species} 
+                for imol,sp in enumerate(self.file_set_tot[parval][reg].keys()):
+                    self.file_set_tot[parval][reg][sp]=data.total_trace[reg][sp][:,:]
                     self.sstart[sp]=data.sstart[sp]
                     self.ssend[sp]=data.ssend[sp]
                     self.dt[sp]=data.dt[sp]
-                    self.endtime[data.parval][sp]=data.endtime[sp]
+                    self.endtime[parval][sp]=data.endtime[sp]
         
     def trace_features(self,window_size,lo_thresh_factor=0.2,hi_thresh_factor=0.8,std_factor=2,numstim=1,end_baseline_start=0,filt_length=5,aucend=None,iti=None):
         import operator
@@ -333,7 +334,7 @@ class nrdh5_group(object):
             self.sig_features['start_dip'][mol][par][region]= [p*self.dt[mol]/self.sig_feat_scale['start_dip'] for p in start_dip_pt]  
 
     def norm_sig(self,signature,thresh,min_max):
-        self.sig={key:{p:{} for p in par_keys} for key in signature.keys()}
+        self.sig={key:{p:{} for p in self.par_keys} for key in signature.keys()}
         self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime', 'start_dip']
         self.sig_feat_scale={'basestd':1,'amplitude':1,'duration':ms_to_sec,'auc':ms_to_sec,'start_plateau':ms_to_sec,'end_plateau':ms_to_sec,'peaktime':ms_to_sec, 'start_dip':ms_to_sec}
         self.sig_features={feat:{key:{p:{} for p in self.par_keys} for key in signature.keys()} for feat in self.sig_feature_list}
