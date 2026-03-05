@@ -12,9 +12,10 @@ ms_to_sec=1000
 class nrdh5_group(object): 
     def __init__(self,fileroot,parameters,tot_species=[],savedir=None):
         self.ftuples,self.parlist,self.params=h5utils.create_filenames(fileroot,parameters)
-        self.file_set_conc={k[1]:{'Overall':{}} for k in self.ftuples}
-        self.time_set={k[1]:{} for k in self.ftuples}
-        self.means={k[1]:{reg:{} for reg in ['space']} for k in self.ftuples} 
+        self.par_keys=[tuple([str(r)+str(p) for r,p in zip(self.params,par[1])]) for par in self.ftuples]
+        self.file_set_conc={k:{'Overall':{}} for k in self.par_keys}
+        self.time_set={k:{} for k in self.par_keys}
+        self.means={k:{reg:{} for reg in ['space']} for k in self.par_keys} 
         if savedir:
             self.savedir=savedir+'/'
         elif os.path.dirname(fileroot):
@@ -24,11 +25,11 @@ class nrdh5_group(object):
 
         if len(tot_species):
             self.tot_species=tot_species
-            self.endtime={k[1]:{sp:[] for sp in self.tot_species} for k in self.ftuples}
-            self.file_set_tot={k[1]:{'Overall':{sp:[] for sp in self.tot_species}} for k in self.ftuples}
+            self.endtime={k:{sp:[] for sp in self.tot_species} for k in self.par_keys}
+            self.file_set_tot={k:{'Overall':{sp:[] for sp in self.tot_species}} for k in self.par_keys}
         else:
             self.tot_species=[]
-            self.file_set_tot={k[1]:{'Overall':{}} for k in self.ftuples}
+            self.file_set_tot={k:{'Overall':{}} for k in self.par_keys}
 
     def conc_arrays(self,data):
         self.molecules=data.molecules
@@ -84,13 +85,13 @@ class nrdh5_group(object):
 
         molecules=self.molecules #use individual molecules for self.file_set_conc and self.means
         ii = 0
-        for parnum,(fname,par) in enumerate(self.ftuples):
+        for parnum,par in enumerate(self.par_keys):
             #print('*************',region,regnum,traces.keys())
             self.tf_base_function(window_size, molecules, self.file_set_conc[par], ii, parnum, par)
 
         molecules=self.tot_species
         ii=1
-        for parnum,(fname,par) in enumerate(self.ftuples):
+        for parnum,par in enumerate(self.par_keys):
             #print('****** nrd_group line 84 *******',region,regnum,traces.keys())
             self.tf_base_function(window_size, molecules, self.file_set_tot[par], ii, parnum, par) 
 
@@ -209,16 +210,17 @@ class nrdh5_group(object):
             #self.feature_dict['auc'][imol,parnum,regnum,:]=[np.sum(traces[i,begin:end]-
             #                                                       baseline[i])*self.dt[mol] for i,(begin,end) in enumerate(zip([begin_auc,end_auc]))]
  
-    def write_features(self,feature_list,arg0,regions,write_trials=False): #arg0=fileroot
+    def write_features(self,feature_list,fileroot,regions,write_trials=False): #arg0=fileroot
+        outfnam=self.savedir+os.path.basename(fileroot)+'-'+'analysis'+'-'.join([i for i in self.params])
         for regnum,reg in enumerate(self.all_regions): #average, one file per region, all molecules in each file
             if reg in regions: #only output a subset of regions
-                outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'_'+reg+'.txt'  #test whether this works for single file
+                outfname=outfnam+'-'+reg+'.txt'  #test whether this works for single file
                 print('in write_features',outfname, feature_list,reg,regnum)
                 if len(self.ftuples)==1:
-                    outputdata=arg0
+                    outputdata=fileroot
                     header='file      ' 
                 else:
-                    outputdata=['-'.join([str(p) for p in par[1]]) for par in self.ftuples]
+                    outputdata=['-'.join(par) for par in self.par_keys]
                     header='-'.join([i for i in self.params])+'  '
                 for feat in feature_list:
                     outputdata=np.column_stack((outputdata,np.round(self.mean_feature[feat][:,:,regnum].T/ms_to_sec,5),np.round(self.std_feature[feat][:,:,regnum].T/ms_to_sec,5)))       
@@ -228,9 +230,9 @@ class nrdh5_group(object):
         #write individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
         if write_trials:
             #print('writing trials')
-            par_string=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
+            par_string=['-'.join(par)+'  '+trial for par in self.par_keys for trial in self.trials]
             for imol,mol in enumerate(list(self.molecules)+self.tot_species):
-                outfname=self.savedir+os.path.basename(arg0)+'-'+'analysis'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
+                outfname=outfnam+'-'+mol+'-trials.txt'
                 header='param  trial '
                 outputdata=par_string
                 for feat in feature_list:
@@ -248,7 +250,7 @@ class nrdh5_group(object):
         else:
             dt_index=0
         self.dt[num_denom]=all_dts[dt_index]
-        for parnum,(fname,par) in enumerate(self.ftuples):
+        for parnum,par in enumerate(self.par_keys):
             if sig_molecules[dt_index] in self.file_set_tot[par][region].keys():                
                 trace_length=np.shape(self.file_set_tot[par][region][sig_molecules[dt_index]])[-1]
             elif sig_molecules[dt_index] in self.file_set_conc[par][region].keys():               
@@ -291,7 +293,7 @@ class nrdh5_group(object):
     
     def signature(self,mol,region,regnum,thresh,window=5):
         import operator
-        for parnum,(fname,par) in enumerate(self.ftuples):
+        for parnum,par in enumerate(self.par_keys):
             #both numerator and denom will be between -1 and 1, with baseline = 0
             if mol.startswith('product'):
                 numerator=np.prod(self.norm_traces[par][region]['numerator'],axis=0) #product of molecules, dimensions are trials x time
@@ -331,14 +333,14 @@ class nrdh5_group(object):
             self.sig_features['start_dip'][mol][par][region]= [p*self.dt[mol]/self.sig_feat_scale['start_dip'] for p in start_dip_pt]  
 
     def norm_sig(self,signature,thresh,min_max):
-        self.sig={key:{p[1]:{} for p in self.ftuples} for key in signature.keys()}
+        self.sig={key:{p:{} for p in par_keys} for key in signature.keys()}
         self.sig_feature_list=['basestd','amplitude','duration','auc','start_plateau','end_plateau','peaktime', 'start_dip']
         self.sig_feat_scale={'basestd':1,'amplitude':1,'duration':ms_to_sec,'auc':ms_to_sec,'start_plateau':ms_to_sec,'end_plateau':ms_to_sec,'peaktime':ms_to_sec, 'start_dip':ms_to_sec}
-        self.sig_features={feat:{key:{p[1]:{} for p in self.ftuples} for key in signature.keys()} for feat in self.sig_feature_list}
+        self.sig_features={feat:{key:{p:{} for p in self.par_keys} for key in signature.keys()} for feat in self.sig_feature_list}
         for key,sig in signature.items():
             num_molecules=sig['num']
             denom_molecules=sig['denom']
-            self.norm_traces={p[1]:{reg:{'numerator':{},'denom':{}} for reg in thresh[key].keys()} for p in self.ftuples}
+            self.norm_traces={p:{reg:{'numerator':{},'denom':{}} for reg in thresh[key].keys()} for p in self.par_keys}
             for region in thresh[key].keys():
                 regnum=self.all_regions.index(region)
                 if len(min_max) and key in min_max:
@@ -355,28 +357,28 @@ class nrdh5_group(object):
 
     def write_sig(self, regions, params,feature_list):  #one file per signature and parameter, all regions, average across trials. 
         for key in self.sig.keys():
-            for par in self.sig[key].keys(): 
+            for par,ftuple in zip(self.sig[key].keys(),self.ftuples):
+                par_str='-'.join(par)
                 #self.sig[mol][par][region] #2D array - trial x time
-                par_str='_'.join([str(q) for q in par])
-                outfilename=self.savedir+os.path.basename(params.fileroot)+par_str+'_'+key
-                columns=[key+par_str+reg+tp for reg in regions for tp in ['mean','std'] ] 
+                outfilename=self.savedir+os.path.splitext(os.path.basename(ftuple[0]))[0]+'-'+key
+                columns=['_'.join([key,par_str,reg,tp]) for reg in regions for tp in ['mean','std'] ] 
                 header='Time   '+'    '.join(columns)
                 output_sig=self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
                 for reg in regions:
                     output_sig=np.column_stack((output_sig,np.mean(self.sig[key][par][reg],axis=0),np.std(self.sig[key][par][reg],axis=0)))
-                np.savetxt(outfilename+'_sig.txt', output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename
+                np.savetxt(outfilename+'-sig.txt', output_sig, fmt='%.4f', delimiter=' ', header=header) #write signature trials with different filename
                 if params.write_trials:
                     trial_cols=['_'.join([key,par_str,reg,tr]) for reg in regions for tr in self.trials ]
                     trial_header='Time   '+'    '.join(trial_cols)
                     output_trials= self.dt[key]*np.arange(np.shape(self.sig[key][par][regions[0]])[-1]) 
                     for reg in regions:
                         output_trials=np.column_stack((output_trials,self.sig[key][par][reg].T)) #need to transpose self.sig??  
-                np.savetxt(outfilename+'_sig_trials.txt', output_trials, fmt='%.4f', delimiter=' ', header=trial_header) #write signature trials with different filename           
+                np.savetxt(outfilename+'-sig-trials.txt', output_trials, fmt='%.4f', delimiter=' ', header=trial_header) #write signature trials with different filename           
         print('in write_sig - features',feature_list,regions)
         #write sig features for individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
         if params.write_trials:
             #write signature features for individual trials
-            out_par=['-'.join([str(p) for p in par[1]])+'  '+trial for par in self.ftuples for trial in self.trials]
+            out_par=['-'.join(par)+'  '+trial for par in self.par_keys for trial in self.trials]
             for mol in self.sig_features[feature_list[0]].keys(): 
                 outfname=self.savedir+os.path.basename(params.fileroot)+'-'+'anal'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'
                 header='param  trial '
@@ -402,11 +404,11 @@ class nrdh5_group(object):
         import os 
         #### write trials for specified regions providing they are in file_set_conc
         for par in self.file_set_conc.keys():
-            par_name='_'.join([str(q) for q in par])
+            par_name='-'.join([str(q) for q in par])
             reg0=regions[0] 
             for file_set in [self.file_set_conc, self.file_set_tot]:
                 for mol in file_set[par][reg0].keys(): 
-                    outfilename=self.savedir+os.path.splitext(os.path.basename(fileroot))[0]+'_'+par_name+'_'+mol+'_trials.txt'
+                    outfilename=self.savedir+os.path.splitext(os.path.basename(fileroot))[0]+'-'+par_name+'-'+mol+'-trials.txt'
                     header='Time '
                     if mol in self.time_set[par].keys():
                         output=self.time_set[par][mol]
@@ -415,7 +417,7 @@ class nrdh5_group(object):
                     for reg in regions:  
                         output=np.column_stack((output,file_set[par][reg][mol].T))
                         header=header+' '.join(['_'.join([par_name,mol,reg,t]) for t in self.trials])+' '
-                    header=header+'\n'
+                    header=header
                     np.savetxt(outfilename, output, fmt='%.4f', delimiter='     ',header=header)           
 
 def exceeds_thresh_points(traces,startpoints,thresh,relate,endpoint=-1,filt_length=0):

@@ -223,7 +223,7 @@ def file_tuple(fnames,params):
                split_text='-'+params[0]
           part_fname=fname[0:dotloc].split(split_text)[-1] 
           hyphen=part_fname.find('-')
-          if hyphen>-1:
+          if hyphen>-1 and len(params)>1:
                parval0=part_fname[0:hyphen]
           else:
                parval0=part_fname 
