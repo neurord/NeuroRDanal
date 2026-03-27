@@ -111,7 +111,7 @@ for fnum,ftuple in enumerate(og.ftuples):
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:
         data.region_structures(dendname,submembname,spinehead)#,stimspine) #stimspine is optional
-        data.average_over_voxels()
+        data.average_over_voxels([''])
     data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
 mole_conc_ic={M:{} for M in data.molecules}
 for mol in data.molecules:
