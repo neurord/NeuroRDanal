@@ -207,6 +207,7 @@ def create_filenames(froot,params):
         else:
             ftuples=[(fnames[0],('1',))]
             parlist=[['1'],[]]
+            params=['']
     return ftuples,parlist,params #list of filenames with params, list of just params
 
 def file_tuple(fnames,params):
