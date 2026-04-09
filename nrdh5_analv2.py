@@ -29,6 +29,7 @@ additional parameters lines 41-63
 """
 #ARGS='/local/vol00/Users/klblackwell/sigpath/nadia_cofilin/Model_Cof -par HSJCF4train*crtl -savedir /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tmp_out -mol Ca Cof Cofactin RacPAK -start 0 300 -write_trials 1 -tot /local/vol00/Users/klblackwell/sigpath/nadia_cofilin/tot_species_minmax'
 #ARGS='/local/vol00/Users/klblackwell/sigpath/cofilin/resultsSSH40_sloKal/Model_Cof -par ctrl_ -mol pCof -start 200 300'
+
 import numpy as np
 import sys
 
@@ -37,18 +38,19 @@ from nrd_output import nrdh5_output
 from nrd_group import nrdh5_group
 from h5utilsV2 import parse_args,get_tot
 
-#####these five params are determined/constrained by morphology file
+#####these four params are determined/constrained by morphology file
 submembname='sub'
 dendname="dend" #name of region from morph file
 spinehead="head"
 stimspine=['sa1[0]'] #list of stimulated spines
-interest_region=['dend','sa1[0]'] #plot mol pairs and write features in which region
+
 window_size=0.5  #number of msec on either side of peak value to average for maximum
-###These control what output is written to terminal
+
+###These control what output is written to terminal.
 show_inject=0
 show_mol_totals=0
 print_head_stats=0
-feature_list=['auc']#[,'duration']#  Constrained by set of features in nrd_group.  Only controls what is printed
+
 #####To plot one molecule against the other. these molecules MUST be specified as plot_molecules
 mol_pairs=[] #[['pCof','actCof'],['CKpCamCa4','PKAphos']]#[['pCof','RacPAK']]#[['CKpCamCa4','ppERK']]#,['ppERK','pSynGap']]
 pairs_timeframe=[100,600]#[200,2000] #units are sec
@@ -72,6 +74,9 @@ except NameError: #NameError refers to an undefined variable (in this case ARGS)
 
 params=parse_args(args,do_exit)
 
+feature_list=params.features #['auc','duration','amplitude']# Constrained by set of features in nrd_group.  Only controls what is printed
+interest_region=params.regions #['dend','sa1[0]','sa1[1]','sa1[2]'] #plot mol pairs and write features in which region
+showplot=int(params.showplot[0])
 if params.mol:
     plot_molecules=params.mol
 else:
@@ -129,7 +134,7 @@ if params.write_trials and len(interest_region):
 #another parameter default: end_baseline_start=0 (uses initial baseline to calculate auc).
 #Specify specific sim time near end of sim if initialization not sufficient for a good baseline for auc calculation
 og.trace_features(window_size,std_factor=2,numstim=num_LTP_stim,end_baseline_start=basestart_time,filt_length=31,aucend=aucend,iti=iti)
-if len(feature_list) and params.write_feat:
+if len(feature_list):
     og.write_features(feature_list,params.fileroot,regions,params.write_trials) #nothing written if interest_region=[]
 #################
 #print all the features in nice format - Overall values only
@@ -147,17 +152,17 @@ for fnum,ftuple in enumerate(og.ftuples):
             print(ftuple[1],mol.rjust(16) ,'  ','  '.join(outputvals),round(np.std(og.feature_dict['auc'][imol,fnum,regnum])/og.mean_feature['auc'][imol,fnum,regnum],3))
 
 ######################### Plots
-if params.showplot:
-    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),params.showplot)
-    if params.showplot==2 and len(stimspine):
+if showplot:
+    fig,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.spinelist),showplot)
+    if showplot==2 and len(stimspine):
         figtitle=figtitle+' '+' '.join(stimspine)
-    if params.showplot==3:
+    if showplot==3:
         for spnum,sp in enumerate(data.spinelist):
             fig[spnum].suptitle(figtitle+' '+sp)
     else:
         fig.canvas.manager.set_window_title(figtitle)
-    pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,params.showplot,textsize=params.textsize)
-    if params.showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+    pu5.plottrace(data.molecules,og,fig,col_inc,scale,data.spinelist,showplot,textsize=params.textsize)
+    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         fig2,col_inc,scale=pu5.plot_setup(data.molecules,og,len(data.region_dict),3)
         for regnum,reg in enumerate(data.region_dict):
             fig2[regnum].suptitle(figtitle+' '+reg)
@@ -165,8 +170,9 @@ if params.showplot:
     #also plot the totaled molecule forms
     if len(tot_species):
         figtot=pu5.plot_total_mol(tot_species,og,figtitle,col_inc,textsize=params.textsize,regions=regions)   
-    for feat in feature_list:
-        pu5.plot_features(og,feat,figtitle,regions)
+    if params.showplot[1]=='1':
+        for feat in feature_list:
+            pu5.plot_features(og,feat,figtitle,regions)
     if params.spatial_bins and data.maxvols>1:
         pu5.spatial_plot(data,og,plot_trials=params.write_trials)
     if len(mol_pairs):
@@ -174,7 +180,7 @@ if params.showplot:
 print('################## Calculating signature ##################3')
 if len(signature):
     og.norm_sig(signature,thresh,min_max)
-    if params.showplot:
+    if showplot:
          figsig=pu5.plot_signature(og,thresh,figtitle,col_inc,textsize=params.textsize)    #plot some feature values
     for feature in og.sig_features.keys():
          print('FEATURE:',feature)
@@ -184,9 +190,9 @@ if len(signature):
                  print(reg,':',og.sig_features[feature][key][reg])
     if params.write_output:
         if len(interest_region):
-            og.write_sig(regions,params,['auc','duration','amplitude'])
+            og.write_sig(regions,params,feature_list) 
         else:
-            og.write_sig(og.all_regions,params,['auc','duration','amplitude'])
+            og.write_sig(og.all_regions,params,feature_list) 
 
 def ZOOM_fig (figs,zoom,name):
     if not isinstance(figs, list):
@@ -202,7 +208,7 @@ if save_fig==True:
         f.savefig(og.savedir+figtitle+'_'+sp+'.png')
     name = ''
     ZOOM_fig(fig,zoom,name)         
-    if params.showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
+    if showplot==3 and data.maxvols>1 and len(data.spinelist)==0:
         for f,reg in zip(fig2,data.region_dict):
             f.savefig(og.savedir+figtitle+'_'+reg+'.png')
         name = 'sp' 
@@ -216,8 +222,6 @@ if save_fig==True:
         name = 'sig' 
         ZOOM_fig(figsig,zoom,name)
 '''
-2. Possibly bring in signature code from sig.py or sig2.py and eliminate one or both of those.
-    pu5.plot3D is used for signatures in sig.py.  How does this differ from spatial_plot?
 
 3. possibly calculate some feature value relative to a control group (e.g. auc_ratio)
 

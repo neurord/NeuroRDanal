@@ -388,7 +388,7 @@ class nrdh5_group(object):
                 np.savetxt(outfilename+'-sig-trials.txt', output_trials, fmt='%.4f', delimiter=' ', header=trial_header) #write signature trials with different filename           
         print('in write_sig - features',feature_list,regions)
         #write sig features for individual trials, one file per molecule, all features on one line, each parameter and trial on separate line
-        if params.write_trials:
+        if params.write_trials and len(feature_list):
             #write signature features for individual trials
             for mol in self.sig_features[feature_list[0]].keys(): 
                 outfname=self.savedir+os.path.basename(params.fileroot)+'-'+'anal'+'-'.join([i for i in self.params])+'-'+mol+'-trials.txt'

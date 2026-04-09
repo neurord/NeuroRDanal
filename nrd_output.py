@@ -118,7 +118,7 @@ class nrdh5_output(object):
             for mol in mol_set:
                 outfilename=savedir+os.path.splitext(os.path.basename(self.fname))[0]+'-'+mol+'-avg.txt'
                 col_name='_'.join([str(r)+str(q) for r,q in zip(params,self.parval)])
-                mean_header=col_name+'_'+mol+'_All ' #first non-time column of header
+                mean_header=mol+'_'+col_name+'_All ' #first non-time column of header
                 if mol in self.molecules: 
                     output_means=np.mean(self.OverallMean[mol],axis=0) #average over trials
                     output_std=np.std(self.OverallMean[mol],axis=0)
