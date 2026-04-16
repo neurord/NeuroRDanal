@@ -414,7 +414,7 @@ class nrdh5_group(object):
         #### write trials for specified regions providing they are in file_set_conc
         for parnum,par in enumerate(self.file_set_conc.keys()):
             par_name='-'.join([str(q) for q in par])
-            reg0=regions[0] 
+            reg0='Overall'#regions[0] #all file_sets have 'Overall'
             for file_set in [self.file_set_conc, self.file_set_tot]:
                 for mol in file_set[par][reg0].keys(): 
                     outfilename=self.savedir+os.path.splitext(os.path.basename(fileroot))[0]+'-'+par_name+'-'+mol+'-trials.txt'
@@ -422,7 +422,7 @@ class nrdh5_group(object):
                     if mol in self.time_set[par].keys():
                         output=self.time_set[par][mol]
                     else:
-                        output=np.arange(len(file_set[par][reg][mol].T))*self.dt[mol]
+                        output=np.arange(len(file_set[par][reg0][mol].T))*self.dt[mol]
                     for reg in regions:  
                         output=np.column_stack((output,file_set[par][reg][mol].T))
                         header=header+' '.join(['_'.join([mol,par_name,reg,'tr'+str(tr)]) for tr in range(self.trials[parnum])])+' '
