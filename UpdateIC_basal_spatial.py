@@ -82,7 +82,8 @@ print(u'◢◤◢◤◢◤◢◤ Reading in IC and Rxn files ◢◤◢◤◢◤�
     
 #read in initial conditions file
 IC_filename=params.IC 
-print(IC_filename)
+outfile=IC_filename+'_h5update.xml'
+print('orig filename=',IC_filename, ', updated IC filename=',outfile)
 tree=ET.parse(IC_filename+'.xml')
 root=tree.getroot()
 tags=list(np.unique([rt.tag for rt in root]))
@@ -110,7 +111,7 @@ for fnum,ftuple in enumerate(og.ftuples):
     #print(data.data['model']['grid'][:])
     if data.maxvols>1:
         data.region_structures(dendname,submembname,spinehead)#,stimspine) #stimspine is optional
-        data.average_over_voxels()
+        data.average_over_voxels([''])
     data.total_subspecies(tot_species,sub_species,params.start,weights=weight)
 mole_conc_ic={M:{} for M in data.molecules}
 for mol in data.molecules:
@@ -266,7 +267,6 @@ for imol,mol in enumerate(tot_species):
           'total in h5 (beg,end)=',round(data.total_trace['Overall'][mol][0][0],decimals),round(data.total_trace['Overall'][mol][0][-1],decimals))
        
 ############# write the new IC file ###################
-outfile=IC_filename+'h5_updateNEW.xml'
 with open(outfile, 'wb') as out:
     out.write(ET.tostring(root))            
 

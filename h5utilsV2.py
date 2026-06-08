@@ -17,6 +17,16 @@ ms_to_sec=1000
 
 def parse_args(commandline,do_exit):
     import argparse
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        if v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('fileroot', type=str, help = 'give path/to/common_name of set of experiments')
     parser.add_argument('-savedir', type=str, help='directory for saving files if different from experiment location')
@@ -27,14 +37,16 @@ def parse_args(commandline,do_exit):
     parser.add_argument('-end',type=int,help='end time to process & display, e.g., if simulation is still running')
     parser.add_argument('-num_stim',type=int,help='number of 100Hz trains - used to determine when stimulation is over and to search for molecule decay',default=4)
     parser.add_argument('-iti',help='intertrial interval, only provided if iti is NOT a parameter used in the filename',default=0)
-    parser.add_argument('-write_trials',type=bool,help='whether to create files with feature values/traces for each trial',default=False)
-    parser.add_argument('-write_output',type=bool,help='whether to create output files for traces, signatures',default=False)
-    parser.add_argument('-write_feat',type=bool,help='whether to create output files for features',default=False)
-    parser.add_argument('-showplot',type=int,help='0: none, 1: overall average, 2: spine concentration, 3: spine and nonspine on seperate graphs, or region plot when no spines',default=1)
+    parser.add_argument('-write_trials',type=str2bool,help='whether to create files with feature values/traces for each trial',default=False)
+    parser.add_argument('-write_output',type=str2bool,help='whether to create output files for traces, signatures',default=False)
+    parser.add_argument('-features',type=str,nargs="+", help='which features to output in files, /nchoices=amplitude,duration,auc,slope,peaktime,peakval,minval,baseline',default=[])
+    parser.add_argument('-regions',type=str,nargs="+", help='which regions to output in files, choices are those in morph file',default=['dend','sa1[0]'])
+    parser.add_argument('-showplot',type=str,help='1st bit 0: none, 1: overall average, 2: spine concentration, 3: spine and nonspine on seperate graphs, or region plot when no spines; 2nd bit: 1 for feature plots',default='10')
     parser.add_argument('-spatial_bins',type=int,help='number of spatial bins to subdivide dendrite to look at spatial gradients',default=0)
     parser.add_argument('-textsize',type=int,help='fontsize of axes and legends in graphs',default=8)
     parser.add_argument('-IC',help='IC is the name of the IC file to be updated')
     parser.add_argument('-Rxn',help='Rxn file is the reaction file used for the simulation')
+
     try:
         args = parser.parse_args(commandline) # maps arguments (commandline) to choices, and checks for validity of choices.
         #if arguments are mapped incorrectly, python wants to exit, but the next line says "don't", instead check whether we are in python (do_exit=False) then don't exit, just give us a warning
@@ -207,6 +219,7 @@ def create_filenames(froot,params):
         else:
             ftuples=[(fnames[0],('1',))]
             parlist=[['1'],[]]
+            params=['']
     return ftuples,parlist,params #list of filenames with params, list of just params
 
 def file_tuple(fnames,params):
@@ -223,7 +236,7 @@ def file_tuple(fnames,params):
                split_text='-'+params[0]
           part_fname=fname[0:dotloc].split(split_text)[-1] 
           hyphen=part_fname.find('-')
-          if hyphen>-1:
+          if hyphen>-1 and len(params)>1:
                parval0=part_fname[0:hyphen]
           else:
                parval0=part_fname 
@@ -286,11 +299,11 @@ def multi_spines(model):
         spine_dict[spine]={'vox':spine_voxel.allvalues(spine), 'vol': sum(spine_voxel_vol.allvalues(spine))}
     return newspinelist,spine_dict
 
-def region_means_dict(Data,molecule,regionDict):
+def region_means_dict(Data,molecule,regionDict,params):
     samples=len(Data.time[molecule])
     RegionMeans=np.zeros((len(Data.trials),samples,len(regionDict)))
     header=''       #Header for output file
-    pars=[str(q) for q in Data.parval] #list of strings representing parameters
+    pars=[str(r)+str(q) for r,q in zip(params,Data.parval)] #list of strings representing parameters
     for j,item in enumerate(regionDict.keys()):
         #print(item,regionDict[item]['vox'],regionDict[item]['vol'],np.shape(Data.counts[molecule]))
         RegionMeans[:,:,j]=np.sum(Data.counts[molecule][:,:,regionDict[item]['vox']],axis=2)/(regionDict[item]['vol']*mol_per_nM_u3)
