@@ -111,15 +111,18 @@ def plot_setup(plot_molecules,data,num_spines,plottype):
     col_inc=[0.0,0.0]
     scale=['lin','lin']
     for i,paramset in enumerate(data.parlist):
-        if len(paramset)>1: #color indexed by paramset
+        if len(paramset)>1: #mutliple files, color indexed by paramset
             col_inc[i]=(len(colors.colors)-1)/(len(paramset)-1)
             if plottype==2 and num_spines>1:
                 col_inc[i]=(len(colors.colors)-1)/(len(paramset)*num_spines)
         elif plottype==2 and num_spines>1: #color indexed by spine number, if more than one spine (that are put onto same plot)
             col_inc[i]=(len(colors.colors)-1)/num_spines
-        elif len(data.trials)>1 or (plottype==2 and num_spines<2) : #if only a single file with multiple trials and at most 1 spine, color indexed by trial
+        elif data.trials[0]>1 or (plottype==2 and num_spines<2) : #if only a single file with multiple trials and at most 1 spine, color indexed by trial
             #if only a single file, check/use the number of trials
-            col_inc[i]=(len(colors.colors)-1)/(len(data.trials)-1)
+            if data.trials[0]<=3:
+                col_inc[i]=(len(colors.colors)-1)/(data.trials[0])#-1) don't use light values in color scale
+            else:
+                col_inc[i]=(len(colors.colors)-1)/(data.trials[0]-1) #with 4? or more trials, need to spread out colors more
         else:
             col_inc[i]=0.0 
             
@@ -151,7 +154,7 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12,regions
     for reg in range(num_regions):
         axis.append(fig[reg].axes)
 
-    for (fname,param) in dataset.ftuples:
+    for par,(fname,param) in zip(dataset.par_keys,dataset.ftuples):
         #First, determine the color scaling
         if len(dataset.ftuples)==1: 
             mycolor=[0,0,0]
@@ -160,7 +163,8 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12,regions
             mycolor,plotlabel,par_index,map_index=get_color_label(dataset.parlist,param,colinc,dataset.params)
         #Second, plot each molecule
         for imol,mol in enumerate(plotmol):
-            maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc['Overall'][param][mol])[1])
+            print('PLOT REGIONS','par=',par,'mol=',mol)
+            maxpoint=min(len(dataset.time_set[par][mol]),np.shape(dataset.file_set_conc[par]['Overall'][mol])[1])
             for regnum,reg in enumerate(regions):
                 #if len(dataset.ftuples)==1:  #NEED TO TEST THIS ON MORPHOLOGY WITHOUT SPINES
                 #    for t in range(len(dataset.trials)):
@@ -168,7 +172,7 @@ def plotregions(plotmol,dataset,fig,colinc,scale,region_dict,textsize=12,regions
                 #        axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.means['regions'][param][mol][t,0:maxpoint].T,
                 #                                   label=reg+' trial'+str(t),color=mycolor)
                 #else:
-                axis[regnum][imol].plot(dataset.time_set[param][mol][0:maxpoint],np.mean(dataset.file_set_conc[reg][param][mol][0:maxpoint],axis=0).T,
+                axis[regnum][imol].plot(dataset.time_set[par][mol][0:maxpoint],np.mean(dataset.file_set_conc[par][reg][mol][0:maxpoint],axis=0).T,
                                        label=plotlabel,color=mycolor)
                 axis[regnum][imol].set_ylabel(mol+' (nM)',fontsize=textsize)
                 axis[regnum][imol].tick_params(labelsize=textsize)
@@ -197,7 +201,7 @@ def plottrace(plotmol,dataset,fig,colinc,scale,spinelist,plottype,textsize=12):
         for imol,mol in enumerate(plotmol):
             maxpoint=min(len(dataset.time_set[param][mol]),np.shape(dataset.file_set_conc[param]['Overall'][mol])[1])
             if plottype==1: # one graph, only plotting overall conc - plot individual trials
-                for t in range(len(dataset.trials)):
+                for t in range(dataset.trials[0]):
                     mycolor=colors.colors[int(colinc[0]*t)]
                     axis[imol].plot(dataset.time_set[param][mol][0:maxpoint],dataset.file_set_conc[param]['Overall'][mol][t,0:maxpoint],label='trial'+str(t),color=mycolor)
             elif plottype==2:  #one figure
