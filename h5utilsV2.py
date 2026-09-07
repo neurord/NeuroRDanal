@@ -358,11 +358,11 @@ def get_tot(params):
         sys.path.append(tot_path)
         nm=importlib.import_module(tot_name)
         tot_species=nm.tot_species
-        weight=nm.weight
+        weight=getattr(nm,'weight',{})
         sub_species=nm.sub_species
-        signature=nm.signature
-        thresh=nm.thresh
-        min_max=nm.min_max
+        signature=getattr(nm,'signature',{})
+        thresh=getattr(nm,'thresh',{})
+        min_max=getattr(nm,'min_max',{})
     else:
         weight={}
         sub_species={}
@@ -370,7 +370,8 @@ def get_tot(params):
         signature={}
         thresh={}
         min_max={}
-    return tot_species,weight,sub_species,signature,thresh,min_max
-
+    return tot_species,weight,sub_species,signature,thresh,min_max    
+             
+   
 
 #min_max={'min':50, 'max': 1050}
